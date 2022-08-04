@@ -1,0 +1,15 @@
+cmake_minimum_required(VERSION 3.0.0)
+project(VulkanStudy VERSION 0.1.0)
+
+include(CTest)
+enable_testing()
+
+file(GLOB_RECURSE SOURCES LIST_DIRECTORIES false RELATIVE "${CMAKE_SOURCE_DIR}" CONFIGURE_DEPENDS "sources/*.cpp")
+
+add_executable(VulkanStudy ${SOURCES})
+
+target_include_directories(VulkanStudy PRIVATE "${CMAKE_SOURCE_DIR}/headers")
+
+set(CPACK_PROJECT_NAME ${PROJECT_NAME})
+set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
+include(CPack)
