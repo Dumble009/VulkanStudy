@@ -74,9 +74,10 @@ void HelloTriangleApplication::mainLoop()
 
 void HelloTriangleApplication::cleanup()
 {
+    vkDestroyInstance(instance, nullptr);
+
     // ウインドウ関連のリソースを削除する
     glfwDestroyWindow(window);
-
     // GLFW自身が確保しているリソースを解放する
     glfwTerminate();
 }
