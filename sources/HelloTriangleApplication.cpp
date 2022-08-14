@@ -11,6 +11,7 @@ void HelloTriangleApplication::run()
 void HelloTriangleApplication::initVulkan()
 {
     createInstance();
+    setupDebugMessenger();
 }
 
 void HelloTriangleApplication::createInstance()
@@ -115,6 +116,63 @@ bool HelloTriangleApplication::checkValidationLayerSupport()
     return true;
 }
 
+void HelloTriangleApplication::setupDebugMessenger()
+{
+    if (!enableValidationLayers)
+    {
+        return;
+    }
+
+    VkDebugUtilsMessengerCreateInfoEXT createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+                                 VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                                 VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT; // コールバック関数を呼び出すメッセージの重要度をビットマスク形式で指定する
+    createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                             VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                             VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT; // コールバック関数を呼び出すメッセージの種類をビットマスク形式で指定する
+    createInfo.pfnUserCallback = debugCallback;                               // コールバック関数
+    createInfo.pUserData = nullptr;                                           // コールバック関数に渡すことが出来る任意のオブジェクト。今回は使用しない
+
+    if (createDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS)
+    {
+        throw std::runtime_error("faiuled to set up debug messenger!");
+    }
+}
+
+VkResult HelloTriangleApplication::createDebugUtilsMessengerEXT(
+    VkInstance instance,
+    const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,
+    const VkAllocationCallbacks *pAllocator,
+    VkDebugUtilsMessengerEXT *pDebugMessegner)
+{
+    // vkCreateDebugUtilsMessengerEXTという名前の関数のポインタを探してくる
+    auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+    if (func != nullptr)
+    {
+        // 見つかった関数を実行する
+        return func(instance, pCreateInfo, pAllocator, pDebugMessegner);
+    }
+    else
+    {
+        // 関数が見つからなければエラー
+        return VK_ERROR_EXTENSION_NOT_PRESENT;
+    }
+}
+
+void HelloTriangleApplication::destroyDebugUtilsMessengerEXT(
+    VkInstance instance,
+    VkDebugUtilsMessengerEXT debugMessenger,
+    const VkAllocationCallbacks *pAllocator)
+{
+    // vkDestroyDebugUtilsMessengerEXTという名前の関数ポインタを探してくる
+    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+    if (func != nullptr)
+    {
+        func(instance, debugMessenger, pAllocator);
+    }
+}
+
 void HelloTriangleApplication::initWindow()
 {
     glfwInit();
@@ -141,10 +199,26 @@ void HelloTriangleApplication::mainLoop()
 
 void HelloTriangleApplication::cleanup()
 {
+    if (enableValidationLayers)
+    {
+        destroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+    }
+
     vkDestroyInstance(instance, nullptr);
 
     // ウインドウ関連のリソースを削除する
     glfwDestroyWindow(window);
     // GLFW自身が確保しているリソースを解放する
     glfwTerminate();
+}
+
+VKAPI_ATTR VkBool32 VKAPI_CALL HelloTriangleApplication::debugCallback(
+    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    VkDebugUtilsMessageSeverityFlagsEXT messageType,
+    const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+    void *pUserData)
+{
+    std::cerr << "validation layer: " << (pCallbackData->pMessage) << std::endl;
+
+    return VK_FALSE;
 }
