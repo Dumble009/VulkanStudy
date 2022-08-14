@@ -37,6 +37,7 @@ void HelloTriangleApplication::createInstance()
     createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
     createInfo.ppEnabledExtensionNames = extensions.data();
 
+    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo; // if文の片方でしか使われないが、if文から抜ける前に削除されると困るのでここで宣言しておく
     // validation layerの指定
     if (enableValidationLayers)
     {
@@ -50,6 +51,8 @@ void HelloTriangleApplication::createInstance()
         // 全てのvalidation layerが有効であればcreateInfoに情報を設定
         createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
         createInfo.ppEnabledLayerNames = validationLayers.data();
+        populateDebugMessengerCreateInfo(debugCreateInfo);
+        createInfo.pNext = &debugCreateInfo;
     }
     else
     {
@@ -116,14 +119,9 @@ bool HelloTriangleApplication::checkValidationLayerSupport()
     return true;
 }
 
-void HelloTriangleApplication::setupDebugMessenger()
+void HelloTriangleApplication::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo)
 {
-    if (!enableValidationLayers)
-    {
-        return;
-    }
-
-    VkDebugUtilsMessengerCreateInfoEXT createInfo{};
+    createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
     createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
                                  VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
@@ -133,6 +131,18 @@ void HelloTriangleApplication::setupDebugMessenger()
                              VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT; // コールバック関数を呼び出すメッセージの種類をビットマスク形式で指定する
     createInfo.pfnUserCallback = debugCallback;                               // コールバック関数
     createInfo.pUserData = nullptr;                                           // コールバック関数に渡すことが出来る任意のオブジェクト。今回は使用しない
+}
+
+void HelloTriangleApplication::setupDebugMessenger()
+{
+    if (!enableValidationLayers)
+    {
+        return;
+    }
+
+    // debugMessengerを作成するために必要な情報を集約するオブジェクト
+    VkDebugUtilsMessengerCreateInfoEXT createInfo;
+    populateDebugMessengerCreateInfo(createInfo);
 
     if (createDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS)
     {
