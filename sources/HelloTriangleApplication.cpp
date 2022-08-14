@@ -28,8 +28,19 @@ void HelloTriangleApplication::initWindow()
 
 void HelloTriangleApplication::mainLoop()
 {
+    // ウインドウが閉じられるまでwhileループを回す
+    while (!glfwWindowShouldClose(window))
+    {
+        // 入力などのイベントを受け取るのに必要らしい
+        glfwPollEvents();
+    }
 }
 
 void HelloTriangleApplication::cleanup()
 {
+    // ウインドウ関連のリソースを削除する
+    glfwDestroyWindow(window);
+
+    // GLFW自身が確保しているリソースを解放する
+    glfwTerminate();
 }
