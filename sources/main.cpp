@@ -1,4 +1,8 @@
 #include <GLFW/glfw3.h>
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZETO_TO_ONE
+#include <glm/vec4.hpp>
+#include <glm/mat4x4.hpp>
 
 int main(void)
 {
@@ -15,6 +19,10 @@ int main(void)
         glfwTerminate();
         return -1;
     }
+
+    glm::mat4 matrix;
+    glm::vec4 vec;
+    auto test = matrix * vec;
 
     /* Make the window's context current */
     glfwMakeContextCurrent(window);
