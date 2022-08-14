@@ -1,7 +1,7 @@
 // ----------STLのinclude----------
-#include <iostream>
-#include <stdexcept>
-#include <cstdlib>
+#include <iostream>  // 入出力
+#include <stdexcept> // 例外処理のexceptionクラスを使用するのに必要
+#include <cstdlib>   // EXIT_FAILURE, EXIT_SUCCESSマクロに使用
 // ----------自作クラスのinclude----------
 #include <HelloTriangleApplication.hpp>
 
