@@ -41,11 +41,65 @@ void HelloTriangleApplication::createInstance()
     // Vulkanの挙動をより厳格に監視するためのvalidation layerの数を指定する
     createInfo.enabledLayerCount = 0;
 
+    // validation layerの指定
+    if (enableValidationLayers)
+    {
+        std::cout << "Validation Layer is enabled." << std::endl;
+        // validationLayersで指定したvalidation layerが有効かどうかを確認
+        if (!checkValidationLayerSupport())
+        {
+            throw std::runtime_error("validation layers requested, but not available!");
+        }
+
+        // 全てのvalidation layerが有効であればcreateInfoに情報を設定
+        createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+        createInfo.ppEnabledLayerNames = validationLayers.data();
+    }
+    else
+    {
+        std::cout << "Validation Layer is not enabled." << std::endl;
+
+        createInfo.enabledLayerCount = 0;
+    }
+
     // 今まで設定してきた情報を元にinstanceを作成。失敗したら例外を投げる
     if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to create instance!");
     }
+}
+
+bool HelloTriangleApplication::checkValidationLayerSupport()
+{
+    // この関数ではvalidationLayersで指定したレイヤーを今の環境で使用可能かを確認する
+    // 方針としては、Vulkanから使用可能なレイヤーのリストを取得して、その中に指定したレイヤーが含まれているかを確認する
+
+    // まずはVulkanに使用可能なレイヤーのリストの要素数を問い合わせる
+    uint32_t layerCount;
+    vkEnumerateInstanceLayerProperties(&layerCount, nullptr); // layerCountにリストのサイズが入る
+
+    std::vector<VkLayerProperties> availableLayers(layerCount);
+    vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data()); // availableLayersの中に使用可能なレイヤーのリストを格納する
+
+    // validationLayersの要素を一つずつ見ていき、availableLayersの中に存在しないレイヤー名があればfalseを投げ、全ての要素がavailableLayersの中にあればtrueを返す
+    for (const char *layerName : validationLayers)
+    {
+        bool layerFound = false;
+        for (const auto &layerProperties : availableLayers)
+        {
+            if (strcmp(layerName, layerProperties.layerName) == 0)
+            {
+                layerFound = true;
+                break;
+            }
+        }
+
+        if (!layerFound)
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 void HelloTriangleApplication::initWindow()
