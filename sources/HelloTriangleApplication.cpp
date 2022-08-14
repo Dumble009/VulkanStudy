@@ -10,6 +10,42 @@ void HelloTriangleApplication::run()
 
 void HelloTriangleApplication::initVulkan()
 {
+    createInstance();
+}
+
+void HelloTriangleApplication::createInstance()
+{
+    // Vulkanにこのアプリについての情報を伝えるための構造体。{}で初期化する事で、指定していないパラメータをnullptrにしている
+    VkApplicationInfo appInfo{};
+    appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    appInfo.pApplicationName = "Hello Triangle";
+    appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.pEngineName = "No Engine";
+    appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.apiVersion = VK_API_VERSION_1_0;
+
+    // Vulkanアプリケーションのインスタンスを作成するために必要な情報を保持する構造体
+    VkInstanceCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    createInfo.pApplicationInfo = &appInfo;
+
+    // Vulkanにウインドウシステムを伝えるために必要な情報をglfwから取得してくる処理
+    uint32_t glfwExtensionCount = 0;
+    const char **glfwExtensions;
+    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+    // glfwから取得してきたウインドウシステムの情報をセットする
+    createInfo.enabledExtensionCount = glfwExtensionCount;
+    createInfo.ppEnabledExtensionNames = glfwExtensions;
+
+    // Vulkanの挙動をより厳格に監視するためのvalidation layerの数を指定する
+    createInfo.enabledLayerCount = 0;
+
+    // 今まで設定してきた情報を元にinstanceを作成。失敗したら例外を投げる
+    if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create instance!");
+    }
 }
 
 void HelloTriangleApplication::initWindow()
