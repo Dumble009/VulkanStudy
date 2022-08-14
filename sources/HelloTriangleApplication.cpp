@@ -30,16 +30,11 @@ void HelloTriangleApplication::createInstance()
     createInfo.pApplicationInfo = &appInfo;
 
     // Vulkanにウインドウシステムを伝えるために必要な情報をglfwから取得してくる処理
-    uint32_t glfwExtensionCount = 0;
-    const char **glfwExtensions;
-    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+    auto extensions = getRequiredExtensions();
 
     // glfwから取得してきたウインドウシステムの情報をセットする
-    createInfo.enabledExtensionCount = glfwExtensionCount;
-    createInfo.ppEnabledExtensionNames = glfwExtensions;
-
-    // Vulkanの挙動をより厳格に監視するためのvalidation layerの数を指定する
-    createInfo.enabledLayerCount = 0;
+    createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+    createInfo.ppEnabledExtensionNames = extensions.data();
 
     // validation layerの指定
     if (enableValidationLayers)
@@ -67,6 +62,24 @@ void HelloTriangleApplication::createInstance()
     {
         throw std::runtime_error("failed to create instance!");
     }
+}
+
+std::vector<const char *> HelloTriangleApplication::getRequiredExtensions()
+{
+    uint32_t glfwExtensionCount = 0;
+    const char **glfwExtensions;
+    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount); // glfwExtensionCountにextensionの数がセットされる
+
+    // glfwExtensions(char*の配列の先頭ポインタ)からglfwExtensions+glfwExtensionCount(char*の配列の末尾ポインタ)を指定する事で、その範囲の配列をvectorに変換している
+    std::vector<const char *> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+
+    if (enableValidationLayers)
+    {
+        // validation layerが有効な場合はextensionsの一つとしてvalidation layerを仕込む
+        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    }
+
+    return extensions;
 }
 
 bool HelloTriangleApplication::checkValidationLayerSupport()

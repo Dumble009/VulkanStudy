@@ -29,10 +29,11 @@ private:
     VkInstance instance; // Vulkanアプリケーションのインスタンス
 
     // -----関数の宣言-----
-    void initVulkan();                  // Vulkan関連の初期化を行う
-    bool checkValidationLayerSupport(); // 指定したvalidation layerがサポートされているかを確かめる
-    void createInstance();              // Vulkanアプリケーションのインスタンスを作成する
-    void initWindow();                  // GLFW関連の初期化を行う
+    void initVulkan();                                 // Vulkan関連の初期化を行う
+    bool checkValidationLayerSupport();                // 指定したvalidation layerがサポートされているかを確かめる
+    std::vector<const char *> getRequiredExtensions(); // GLFWからウインドウマネージャのextensionsをもらってくる
+    void createInstance();                             // Vulkanアプリケーションのインスタンスを作成する
+    void initWindow();                                 // GLFW関連の初期化を行う
     void mainLoop();
     void cleanup();
 };
