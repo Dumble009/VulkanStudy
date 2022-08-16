@@ -25,9 +25,10 @@ private:
     const bool enableValidationLayers = true;
 #endif
 
-    GLFWwindow *window;                      // GLFWのウインドウハンドラ
-    VkInstance instance;                     // Vulkanアプリケーションのインスタンス
-    VkDebugUtilsMessengerEXT debugMessenger; // validation layerへのコールバック関数の登録を行ってくれるオブジェクト
+    GLFWwindow *window;                               // GLFWのウインドウハンドラ
+    VkInstance instance;                              // Vulkanアプリケーションのインスタンス
+    VkDebugUtilsMessengerEXT debugMessenger;          // validation layerへのコールバック関数の登録を行ってくれるオブジェクト
+    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE; // 物理GPUの情報が格納されるオブジェクト。instanceが破棄されると自動的に破棄される。
 
     // -----関数の宣言-----
     void initVulkan();                                 // Vulkan関連の初期化を行う
@@ -48,8 +49,10 @@ private:
         VkDebugUtilsMessengerEXT debugMessenger,
         const VkAllocationCallbacks *pAllocator); // 引数に渡されたdebugMessengerを削除する関数
 
-    void createInstance(); // Vulkanアプリケーションのインスタンスを作成する
-    void initWindow();     // GLFW関連の初期化を行う
+    void createInstance();                          // Vulkanアプリケーションのインスタンスを作成する
+    void initWindow();                              // GLFW関連の初期化を行う
+    void pickPhysicalDevice();                      // 物理GPUの設定を行う
+    bool isDeviceSuitable(VkPhysicalDevice device); // 物理GPU deviceが要求する機能を満たすかどうかをチェックする
     void mainLoop();
     void cleanup();
 

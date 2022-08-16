@@ -12,6 +12,7 @@ void HelloTriangleApplication::initVulkan()
 {
     createInstance();
     setupDebugMessenger();
+    pickPhysicalDevice();
 }
 
 void HelloTriangleApplication::createInstance()
@@ -195,6 +196,52 @@ void HelloTriangleApplication::initWindow()
 
     // 3つめのパラメータはウインドウのタイトル、4つめは表示するモニタの指定、5つめはOpenGLで使用されるもの
     window = glfwCreateWindow(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, "Vulkan", nullptr, nullptr);
+}
+
+void HelloTriangleApplication::pickPhysicalDevice()
+{
+    // まずはdeviceCountのポインタを渡して認識しているGPUの数を受け取る
+    uint32_t deviceCount = 0;
+    vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+
+    if (deviceCount == 0)
+    {
+        throw std::runtime_error("failed to find GPUs with Vulkan suppoprt!");
+    }
+
+    // 先ほど渡されたdeviceCountと、データを格納するvectorのポインタを渡すことで、devicesに物理GPUのデータを格納する
+    std::vector<VkPhysicalDevice> devices(deviceCount);
+    vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+
+    // devices内の各GPUを見ていき、要求仕様を満たすものを1つ探す
+    for (const auto &device : devices)
+    {
+        if (isDeviceSuitable(device))
+        {
+            physicalDevice = device;
+            break;
+        }
+    }
+
+    // physicalDeviceが初期値VK_NULL_HANDLEのまま→仕様を満たすGPUを見つけられなかったと言う事なので、エラー
+    if (physicalDevice == VK_NULL_HANDLE)
+    {
+        throw std::runtime_error("failed to find a suitable GPU!");
+    }
+}
+
+bool HelloTriangleApplication::isDeviceSuitable(VkPhysicalDevice device)
+{
+    // GPUの名前やサポートするVulkanのバージョンなどの基本情報をdevicePropertiesに、
+    // GPUが対応している機能などの情報をdeviceFeaturesに格納する
+    VkPhysicalDeviceProperties deviceProperties;
+    VkPhysicalDeviceFeatures deviceFeatures;
+    vkGetPhysicalDeviceProperties(device, &deviceProperties);
+    vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+
+    // ジオメトリシェーダーに対応しているかどうか
+    // チュートリアルではこれに加えて単体GPUであるかどうか(iGPU等ではないか)のチェックもあったが、ノートPCで作業をする時に厄介になるので今回は省略する
+    return deviceFeatures.geometryShader;
 }
 
 void HelloTriangleApplication::mainLoop()
