@@ -4,9 +4,15 @@
 #include <vector>    // レイヤーのリストを取り扱うために必要
 #include <cstring>   // レイヤー文字列の比較に必要
 #include <iostream>  // デバッグメッセージを表示するのに使用
+#include <optional>  // QueueFamilyIndicesの値が未定義であるかどうかをチェック出来るようにするために必要
 // ----------GLFW(Vulkan込み)のinclude-----------
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+
+// 各コマンドに対応するキューのIDをまとめて保持する構造体
+struct QueueFamilyIndices{
+    std::optional<uint32_t> graphicsFamily;
+};
 
 class HelloTriangleApplication
 {
@@ -53,6 +59,7 @@ private:
     void initWindow();                              // GLFW関連の初期化を行う
     void pickPhysicalDevice();                      // 物理GPUの設定を行う
     bool isDeviceSuitable(VkPhysicalDevice device); // 物理GPU deviceが要求する機能を満たすかどうかをチェックする
+    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device); // 物理GPU deviceが持っているキューファミリーの中から要求する機能に対応するものを探す
     void mainLoop();
     void cleanup();
 

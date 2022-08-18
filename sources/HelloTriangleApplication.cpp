@@ -244,6 +244,12 @@ bool HelloTriangleApplication::isDeviceSuitable(VkPhysicalDevice device)
     return deviceFeatures.geometryShader;
 }
 
+QueueFamilyIndices HelloTriangleApplication::findQueueFamilies(VkPhysicalDevice device){
+    QueueFamilyIndices indices;
+
+    return indices;
+}
+
 void HelloTriangleApplication::mainLoop()
 {
     // ウインドウが閉じられるまでwhileループを回す
