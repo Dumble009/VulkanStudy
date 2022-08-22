@@ -12,6 +12,11 @@
 // 各コマンドに対応するキューのIDをまとめて保持する構造体
 struct QueueFamilyIndices{
     std::optional<uint32_t> graphicsFamily;
+
+    // graphicsFamilyに何らかの値が代入されているかをチェックする
+    bool isComplete(){
+        return graphicsFamily.has_value();
+    }
 };
 
 class HelloTriangleApplication

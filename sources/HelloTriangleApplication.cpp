@@ -232,16 +232,10 @@ void HelloTriangleApplication::pickPhysicalDevice()
 
 bool HelloTriangleApplication::isDeviceSuitable(VkPhysicalDevice device)
 {
-    // GPUの名前やサポートするVulkanのバージョンなどの基本情報をdevicePropertiesに、
-    // GPUが対応している機能などの情報をdeviceFeaturesに格納する
-    VkPhysicalDeviceProperties deviceProperties;
-    VkPhysicalDeviceFeatures deviceFeatures;
-    vkGetPhysicalDeviceProperties(device, &deviceProperties);
-    vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+    // deviceにアプリの条件を満たすキューファミリーが存在しているかをチェックする
+    auto indices = findQueueFamilies(device);
 
-    // ジオメトリシェーダーに対応しているかどうか
-    // チュートリアルではこれに加えて単体GPUであるかどうか(iGPU等ではないか)のチェックもあったが、ノートPCで作業をする時に厄介になるので今回は省略する
-    return deviceFeatures.geometryShader;
+    return indices.isComplete();
 }
 
 QueueFamilyIndices HelloTriangleApplication::findQueueFamilies(VkPhysicalDevice device){
