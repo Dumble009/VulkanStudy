@@ -13,6 +13,7 @@ void HelloTriangleApplication::initVulkan()
     createInstance();
     setupDebugMessenger();
     pickPhysicalDevice();
+    createLogicalDevice();
 }
 
 void HelloTriangleApplication::createInstance()
@@ -230,6 +231,50 @@ void HelloTriangleApplication::pickPhysicalDevice()
     }
 }
 
+void HelloTriangleApplication::createLogicalDevice()
+{
+    QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+
+    // 物理デバイスが持つあるキューファミリーに対していくつのキューファミリーを要求するか指定する
+    VkDeviceQueueCreateInfo queueCreateInfo{};
+    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueCreateInfo.queueFamilyIndex = indices.graphicsFamily.value();
+    queueCreateInfo.queueCount = 1;
+    float queuePriority = 1.0f;
+    queueCreateInfo.pQueuePriorities = &queuePriority; // キューの実行優先順位。0~1の範囲で指定する
+
+    VkPhysicalDeviceFeatures deviceFeatures{}; // キューに要求する機能。今は空にしておく
+
+    // ここから論理デバイスの作成情報を埋めていく
+    VkDeviceCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    createInfo.pQueueCreateInfos = &queueCreateInfo;
+    createInfo.queueCreateInfoCount = 1;
+    createInfo.pEnabledFeatures = &deviceFeatures;
+
+    createInfo.enabledExtensionCount = 0;
+
+    if (enableValidationLayers)
+    {
+        // validation layerの設定。今後のアップデートでこのプロパティは廃止されるらしい
+        createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+        createInfo.ppEnabledLayerNames = validationLayers.data();
+    }
+    else
+    {
+        createInfo.enabledLayerCount = 0;
+    }
+
+    // 論理デバイスで抽象化する物理デバイスと、先ほど作成した情報を渡して論理デバイスを作成する
+    if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create logical device!");
+    }
+
+    // 論理デバイスから、グラフィック命令を扱えるキューのハンドラを取得する。
+    vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+}
+
 bool HelloTriangleApplication::isDeviceSuitable(VkPhysicalDevice device)
 {
     // deviceにアプリの条件を満たすキューファミリーが存在しているかをチェックする
@@ -238,7 +283,8 @@ bool HelloTriangleApplication::isDeviceSuitable(VkPhysicalDevice device)
     return indices.isComplete();
 }
 
-QueueFamilyIndices HelloTriangleApplication::findQueueFamilies(VkPhysicalDevice device){
+QueueFamilyIndices HelloTriangleApplication::findQueueFamilies(VkPhysicalDevice device)
+{
     QueueFamilyIndices indices;
 
     // まずはキューファミリーが全部で何個あるのか調べ、キューファミリーのリストを取得する
@@ -250,8 +296,10 @@ QueueFamilyIndices HelloTriangleApplication::findQueueFamilies(VkPhysicalDevice 
 
     // queueFamiliesの中からVK_QUEUE_GRAPHICS_BITに対応したものを探して、そのIDを格納する。
     int i = 0;
-    for(const auto& queueFamily : queueFamilies){
-        if(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT){
+    for (const auto &queueFamily : queueFamilies)
+    {
+        if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+        {
             indices.graphicsFamily = i;
             break;
         }
@@ -274,6 +322,8 @@ void HelloTriangleApplication::mainLoop()
 
 void HelloTriangleApplication::cleanup()
 {
+    // instanceよりも先に論理デバイスを削除する
+    vkDestroyDevice(device, nullptr);
     if (enableValidationLayers)
     {
         destroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);

@@ -10,11 +10,13 @@
 #include <GLFW/glfw3.h>
 
 // 各コマンドに対応するキューのIDをまとめて保持する構造体
-struct QueueFamilyIndices{
+struct QueueFamilyIndices
+{
     std::optional<uint32_t> graphicsFamily;
 
     // graphicsFamilyに何らかの値が代入されているかをチェックする
-    bool isComplete(){
+    bool isComplete()
+    {
         return graphicsFamily.has_value();
     }
 };
@@ -35,11 +37,13 @@ private:
 #else
     const bool enableValidationLayers = true;
 #endif
+    VkQueue graphicsQueue; // グラフィック命令を受け付けるキューのハンドラ。論理デバイスが削除されたら自動的に消えるので明示的にcleanupする必要は無い
 
     GLFWwindow *window;                               // GLFWのウインドウハンドラ
     VkInstance instance;                              // Vulkanアプリケーションのインスタンス
     VkDebugUtilsMessengerEXT debugMessenger;          // validation layerへのコールバック関数の登録を行ってくれるオブジェクト
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE; // 物理GPUの情報が格納されるオブジェクト。instanceが破棄されると自動的に破棄される。
+    VkDevice device;                                  // GPUの論理デバイスの情報が格納されるオブジェクト。
 
     // -----関数の宣言-----
     void initVulkan();                                 // Vulkan関連の初期化を行う
@@ -60,10 +64,11 @@ private:
         VkDebugUtilsMessengerEXT debugMessenger,
         const VkAllocationCallbacks *pAllocator); // 引数に渡されたdebugMessengerを削除する関数
 
-    void createInstance();                          // Vulkanアプリケーションのインスタンスを作成する
-    void initWindow();                              // GLFW関連の初期化を行う
-    void pickPhysicalDevice();                      // 物理GPUの設定を行う
-    bool isDeviceSuitable(VkPhysicalDevice device); // 物理GPU deviceが要求する機能を満たすかどうかをチェックする
+    void createInstance();                                         // Vulkanアプリケーションのインスタンスを作成する
+    void initWindow();                                             // GLFW関連の初期化を行う
+    void pickPhysicalDevice();                                     // 物理GPUの設定を行う
+    void createLogicalDevice();                                    // 物理デバイスから論理デバイスを作成する
+    bool isDeviceSuitable(VkPhysicalDevice device);                // 物理GPU deviceが要求する機能を満たすかどうかをチェックする
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device); // 物理GPU deviceが持っているキューファミリーの中から要求する機能に対応するものを探す
     void mainLoop();
     void cleanup();
