@@ -247,6 +247,24 @@ bool HelloTriangleApplication::isDeviceSuitable(VkPhysicalDevice device)
 QueueFamilyIndices HelloTriangleApplication::findQueueFamilies(VkPhysicalDevice device){
     QueueFamilyIndices indices;
 
+    // まずはキューファミリーが全部で何個あるのか調べ、キューファミリーのリストを取得する
+    uint32_t queueFamilyCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+    // queueFamiliesの中からVK_QUEUE_GRAPHICS_BITに対応したものを探して、そのIDを格納する。
+    int i = 0;
+    for(const auto& queueFamily : queueFamilies){
+        if(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT){
+            indices.graphicsFamily = i;
+            break;
+        }
+
+        i++;
+    }
+
     return indices;
 }
 
