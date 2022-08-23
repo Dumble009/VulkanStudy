@@ -12,6 +12,7 @@ void HelloTriangleApplication::initVulkan()
 {
     createInstance();
     setupDebugMessenger();
+    createSurface();
     pickPhysicalDevice();
     createLogicalDevice();
 }
@@ -67,6 +68,20 @@ void HelloTriangleApplication::createInstance()
     if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to create instance!");
+    }
+}
+
+void HelloTriangleApplication::createSurface()
+{
+    // Vulkanからウインドウにアクセスするために必要な構造体を作成するための情報を埋める
+    VkWin32SurfaceCreateInfoKHR createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+    createInfo.hwnd = glfwGetWin32Window(window);    // GLFWのwindowオブジェクトからHWNDを取り出している
+    createInfo.hinstance = GetModuleHandle(nullptr); // 今のプロセスのHINSTANCEハンドルを取得する
+
+    if (vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &surface) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create window surface!");
     }
 }
 
@@ -322,12 +337,13 @@ void HelloTriangleApplication::mainLoop()
 
 void HelloTriangleApplication::cleanup()
 {
-    // instanceよりも先に論理デバイスを削除する
+    // instanceよりも先にinstanceに依存する機能のクリーンアップを行う
     vkDestroyDevice(device, nullptr);
     if (enableValidationLayers)
     {
         destroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
     }
+    vkDestroySurfaceKHR(instance, surface, nullptr);
 
     vkDestroyInstance(instance, nullptr);
 

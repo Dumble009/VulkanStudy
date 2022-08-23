@@ -6,8 +6,11 @@
 #include <iostream>  // デバッグメッセージを表示するのに使用
 #include <optional>  // QueueFamilyIndicesの値が未定義であるかどうかをチェック出来るようにするために必要
 // ----------GLFW(Vulkan込み)のinclude-----------
+#define VK_USE_PLATFORM_WIN32_KHR // win32のAPIを使用してウインドウにアクセスするために必要
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h> // win32のAPIを使用してウインドウにアクセスするために必要
 
 // 各コマンドに対応するキューのIDをまとめて保持する構造体
 struct QueueFamilyIndices
@@ -44,6 +47,7 @@ private:
     VkDebugUtilsMessengerEXT debugMessenger;          // validation layerへのコールバック関数の登録を行ってくれるオブジェクト
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE; // 物理GPUの情報が格納されるオブジェクト。instanceが破棄されると自動的に破棄される。
     VkDevice device;                                  // GPUの論理デバイスの情報が格納されるオブジェクト。
+    VkSurfaceKHR surface;                             // ウインドウサーフェースオブジェクト。ウインドウにレンダリング結果を表示するために必要
 
     // -----関数の宣言-----
     void initVulkan();                                 // Vulkan関連の初期化を行う
@@ -65,6 +69,7 @@ private:
         const VkAllocationCallbacks *pAllocator); // 引数に渡されたdebugMessengerを削除する関数
 
     void createInstance();                                         // Vulkanアプリケーションのインスタンスを作成する
+    void createSurface();                                          // Vulkanのレンダリング結果をウインドウに表示するために必要なウインドウサーフェースを作成する
     void initWindow();                                             // GLFW関連の初期化を行う
     void pickPhysicalDevice();                                     // 物理GPUの設定を行う
     void createLogicalDevice();                                    // 物理デバイスから論理デバイスを作成する
