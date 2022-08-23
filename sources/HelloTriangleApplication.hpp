@@ -5,6 +5,7 @@
 #include <cstring>   // レイヤー文字列の比較に必要
 #include <iostream>  // デバッグメッセージを表示するのに使用
 #include <optional>  // QueueFamilyIndicesの値が未定義であるかどうかをチェック出来るようにするために必要
+#include <set>       // 今回のアプリケーションで使用するキューのIDの集合を取り扱うために必要
 // ----------GLFW(Vulkan込み)のinclude-----------
 #define VK_USE_PLATFORM_WIN32_KHR // win32のAPIを使用してウインドウにアクセスするために必要
 #define GLFW_INCLUDE_VULKAN
@@ -15,12 +16,13 @@
 // 各コマンドに対応するキューのIDをまとめて保持する構造体
 struct QueueFamilyIndices
 {
-    std::optional<uint32_t> graphicsFamily;
+    std::optional<uint32_t> graphicsFamily; // レンダリングコマンドを実行可能なキューファミリーのID
+    std::optional<uint32_t> presentFamily;  // レンダリング結果をウインドウサーフェースに表示するコマンドが実行可能なキューファミリーのID
 
-    // graphicsFamilyに何らかの値が代入されているかをチェックする
+    // 各パラメータに何らかの値が代入されているかをチェックする
     bool isComplete()
     {
-        return graphicsFamily.has_value();
+        return graphicsFamily.has_value() && presentFamily.has_value();
     }
 };
 
@@ -41,6 +43,7 @@ private:
     const bool enableValidationLayers = true;
 #endif
     VkQueue graphicsQueue; // グラフィック命令を受け付けるキューのハンドラ。論理デバイスが削除されたら自動的に消えるので明示的にcleanupする必要は無い
+    VkQueue presentQueue;  // ウインドウへの表示命令を受け付けるキューのハンドラ。
 
     GLFWwindow *window;                               // GLFWのウインドウハンドラ
     VkInstance instance;                              // Vulkanアプリケーションのインスタンス

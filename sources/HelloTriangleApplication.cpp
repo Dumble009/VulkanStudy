@@ -250,21 +250,30 @@ void HelloTriangleApplication::createLogicalDevice()
 {
     QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 
-    // 物理デバイスが持つあるキューファミリーに対していくつのキューファミリーを要求するか指定する
-    VkDeviceQueueCreateInfo queueCreateInfo{};
-    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    queueCreateInfo.queueFamilyIndex = indices.graphicsFamily.value();
-    queueCreateInfo.queueCount = 1;
+    std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+    std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
+
     float queuePriority = 1.0f;
-    queueCreateInfo.pQueuePriorities = &queuePriority; // キューの実行優先順位。0~1の範囲で指定する
+
+    for (uint32_t queueFamily : uniqueQueueFamilies)
+    {
+        // 物理デバイスが持つ各キューファミリーに対していくつのキューを要求するか指定する
+        VkDeviceQueueCreateInfo queueCreateInfo{};
+        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfo.queueFamilyIndex = queueFamily;
+        queueCreateInfo.queueCount = 1;
+        queueCreateInfo.pQueuePriorities = &queuePriority; // キューの実行優先順位。0~1の範囲で指定する
+
+        queueCreateInfos.push_back(queueCreateInfo);
+    }
 
     VkPhysicalDeviceFeatures deviceFeatures{}; // キューに要求する機能。今は空にしておく
 
     // ここから論理デバイスの作成情報を埋めていく
     VkDeviceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    createInfo.pQueueCreateInfos = &queueCreateInfo;
-    createInfo.queueCreateInfoCount = 1;
+    createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
+    createInfo.pQueueCreateInfos = queueCreateInfos.data();
     createInfo.pEnabledFeatures = &deviceFeatures;
 
     createInfo.enabledExtensionCount = 0;
@@ -286,8 +295,9 @@ void HelloTriangleApplication::createLogicalDevice()
         throw std::runtime_error("failed to create logical device!");
     }
 
-    // 論理デバイスから、グラフィック命令を扱えるキューのハンドラを取得する。
+    // 出来上がった論理デバイスから、各種命令を扱えるキューのハンドラを取得する。
     vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+    vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 }
 
 bool HelloTriangleApplication::isDeviceSuitable(VkPhysicalDevice device)
@@ -309,13 +319,28 @@ QueueFamilyIndices HelloTriangleApplication::findQueueFamilies(VkPhysicalDevice 
     std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 
-    // queueFamiliesの中からVK_QUEUE_GRAPHICS_BITに対応したものを探して、そのIDを格納する。
+    // queueFamiliesの中から各コマンドを実行可能なキューを探してその番号を格納する
     int i = 0;
     for (const auto &queueFamily : queueFamilies)
     {
+
+        // グラフィックスコマンドを実行可能なキューかどうか
         if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
         {
             indices.graphicsFamily = i;
+        }
+
+        // ウインドウへの表示コマンドを実行可能なキューかどうか
+        VkBool32 presentSupport = false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+        if (presentSupport)
+        {
+            indices.presentFamily = i;
+        }
+
+        // 全部のパラメータに何らかの値が入っていればそれ以上探索する必要は無い
+        if (indices.isComplete())
+        {
             break;
         }
 
