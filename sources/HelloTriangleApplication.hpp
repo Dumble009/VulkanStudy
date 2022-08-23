@@ -26,6 +26,14 @@ struct QueueFamilyIndices
     }
 };
 
+// 物理GPUが対応しているスワップチェインの情報をまとめた構造体
+struct SwapChainSupportDetails
+{
+    VkSurfaceCapabilitiesKHR capabilities;      // スワップチェインが取り扱うイメージの最小・最大数、解像度の最小・最大値
+    std::vector<VkSurfaceFormatKHR> formats;    // ウインドウサーフェースが取り扱うピクセルのフォーマット、色空間の種類
+    std::vector<VkPresentModeKHR> presentModes; // ウインドウサーフェースが対応している表示モード
+};
+
 class HelloTriangleApplication
 {
 public:
@@ -72,14 +80,15 @@ private:
         VkDebugUtilsMessengerEXT debugMessenger,
         const VkAllocationCallbacks *pAllocator); // 引数に渡されたdebugMessengerを削除する関数
 
-    void createInstance();                                         // Vulkanアプリケーションのインスタンスを作成する
-    void createSurface();                                          // Vulkanのレンダリング結果をウインドウに表示するために必要なウインドウサーフェースを作成する
-    void initWindow();                                             // GLFW関連の初期化を行う
-    void pickPhysicalDevice();                                     // 物理GPUの設定を行う
-    void createLogicalDevice();                                    // 物理デバイスから論理デバイスを作成する
-    bool isDeviceSuitable(VkPhysicalDevice device);                // 物理GPU deviceが要求する機能を満たすかどうかをチェックする
-    bool checkDeviceExtensionSupport(VkPhysicalDevice device);     // 物理GPU deviceが必要な拡張機能に対応しているかどうかをチェックする
-    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device); // 物理GPU deviceが持っているキューファミリーの中から要求する機能に対応するものを探す
+    void createInstance();                                                  // Vulkanアプリケーションのインスタンスを作成する
+    void createSurface();                                                   // Vulkanのレンダリング結果をウインドウに表示するために必要なウインドウサーフェースを作成する
+    void initWindow();                                                      // GLFW関連の初期化を行う
+    void pickPhysicalDevice();                                              // 物理GPUの設定を行う
+    void createLogicalDevice();                                             // 物理デバイスから論理デバイスを作成する
+    bool isDeviceSuitable(VkPhysicalDevice device);                         // 物理GPU deviceが要求する機能を満たすかどうかをチェックする
+    bool checkDeviceExtensionSupport(VkPhysicalDevice device);              // 物理GPU deviceが必要な拡張機能に対応しているかどうかをチェックする
+    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);          // 物理GPU deviceが持っているキューファミリーの中から要求する機能に対応するものを探す
+    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device); // 物理GPU deviceが対応しているスワップチェインの情報を取得する
     void mainLoop();
     void cleanup();
 

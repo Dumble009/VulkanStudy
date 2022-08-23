@@ -306,10 +306,21 @@ void HelloTriangleApplication::createLogicalDevice()
 
 bool HelloTriangleApplication::isDeviceSuitable(VkPhysicalDevice device)
 {
-    // deviceにアプリの条件を満たすキューファミリーが存在しているかをチェックする
+    // deviceにアプリの条件を満たすキューファミリーがすべて存在しているかどうか
     auto indices = findQueueFamilies(device);
 
-    return indices.isComplete();
+    // deviceが必要な拡張機能全てに対応しているかどうか
+    bool extensionSupported = checkDeviceExtensionSupport(device);
+
+    // deviceがスワップチェインに対応しているかどうか
+    bool swapChainAdequate = false;
+    if (extensionSupported)
+    {
+        SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
+        swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+    }
+
+    return indices.isComplete() & extensionSupported & swapChainAdequate;
 }
 
 bool HelloTriangleApplication::checkDeviceExtensionSupport(VkPhysicalDevice device)
@@ -370,6 +381,32 @@ QueueFamilyIndices HelloTriangleApplication::findQueueFamilies(VkPhysicalDevice 
     }
 
     return indices;
+}
+
+SwapChainSupportDetails HelloTriangleApplication::querySwapChainSupport(VkPhysicalDevice device)
+{
+    SwapChainSupportDetails details;
+
+    // 物理デバイスが対応しているスワップチェインについての情報を順に取得していき、detailsのメンバに格納する
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+
+    uint32_t formatCount;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+    if (formatCount != 0)
+    {
+        details.formats.resize(formatCount);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
+    }
+
+    uint32_t presentModeCount;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+    if (presentModeCount != 0)
+    {
+        details.presentModes.resize(presentModeCount);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
+    }
+
+    return details;
 }
 
 void HelloTriangleApplication::mainLoop()
