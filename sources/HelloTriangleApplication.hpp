@@ -35,8 +35,9 @@ private:
     // -----変数の宣言-----
     const int DEFAULT_WINDOW_WIDTH = 800;  // ウインドウ幅の初期値
     const int DEFAULT_WINDOW_HEIGHT = 600; // ウインドウ高さの初期値
-    // 使用するvalidation layerの種類を指定
-    const std::vector<const char *> validationLayers = {"VK_LAYER_KHRONOS_validation"};
+
+    const std::vector<const char *> validationLayers = {"VK_LAYER_KHRONOS_validation"};   // 使用するvalidation layerの種類を指定
+    const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME}; // 物理GPUが対応していてほしい拡張機能の名称のリスト
 #ifdef NDEBUG
     const bool enableValidationLayers = false;
 #else
@@ -77,6 +78,7 @@ private:
     void pickPhysicalDevice();                                     // 物理GPUの設定を行う
     void createLogicalDevice();                                    // 物理デバイスから論理デバイスを作成する
     bool isDeviceSuitable(VkPhysicalDevice device);                // 物理GPU deviceが要求する機能を満たすかどうかをチェックする
+    bool checkDeviceExtensionSupport(VkPhysicalDevice device);     // 物理GPU deviceが必要な拡張機能に対応しているかどうかをチェックする
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device); // 物理GPU deviceが持っているキューファミリーの中から要求する機能に対応するものを探す
     void mainLoop();
     void cleanup();
