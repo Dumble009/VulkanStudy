@@ -15,6 +15,7 @@ void HelloTriangleApplication::initVulkan()
     createSurface();
     pickPhysicalDevice();
     createLogicalDevice();
+    createSwapChain();
 }
 
 void HelloTriangleApplication::createInstance()
@@ -409,6 +410,73 @@ SwapChainSupportDetails HelloTriangleApplication::querySwapChainSupport(VkPhysic
     return details;
 }
 
+void HelloTriangleApplication::createSwapChain()
+{
+    // 物理GPUが対応しているスワップチェインについての情報を取得
+    SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
+
+    // 対応している画像フォーマット、画像の渡し方、画像サイズの中から最適な物を選んで取得
+    VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
+    VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
+    VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
+
+    // スワップチェインに含まれる画像の数を決定する。デフォルトは最小枚数+1とする。
+    uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
+
+    // 最大枚数を超えていないかのチェック。maxImageCount = 0は最大数が無限であることを意味している
+    if (swapChainSupport.capabilities.maxImageCount != 0 && imageCount > swapChainSupport.capabilities.maxImageCount)
+    {
+        imageCount = swapChainSupport.capabilities.maxImageCount;
+    }
+
+    // スワップチェインを作成するための情報を埋めていく
+    VkSwapchainCreateInfoKHR createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    createInfo.surface = surface;
+    createInfo.minImageCount = imageCount;
+    createInfo.imageFormat = surfaceFormat.format;
+    createInfo.imageColorSpace = surfaceFormat.colorSpace;
+    createInfo.imageExtent = extent;
+    createInfo.imageArrayLayers = 1;                             // レンダリング結果のレイヤー数。VRとかじゃない限りは1でOK
+    createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // スワップチェインの使い道。この値はレンダリング結果の表示に使用することを示している
+
+    // 複数のキューファミリーでスワップチェインを共有する際の設定
+    QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+    uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
+
+    if (indices.graphicsFamily != indices.presentFamily)
+    {
+        // graphicsFamilyとpresentFamilyが異なるキューファミリーの時は複数のキューファミリーが共有できるようにする
+        createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+        // 共有するキューファミリーの数とポインタを渡しておく
+        createInfo.queueFamilyIndexCount = 2;
+        createInfo.pQueueFamilyIndices = queueFamilyIndices;
+    }
+    else
+    {
+        // graphicsFamilyとpresentFamilyが同じキューファミリーな場合は一つのキューファミリーが排他的に取り扱えるようにする。
+        // こちらの方がパフォーマンス的に良い。
+        createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        createInfo.queueFamilyIndexCount = 0;
+        createInfo.pQueueFamilyIndices = nullptr;
+    }
+    // 画像をレンダリングする際に回転や反転などの操作を加えられる。currentTransformは何もしない
+    createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
+
+    // レンダリング結果のアルファチャンネルをどう取り扱うか。COMPOSITE_ALPHA_OPAQUEは透明度を無視する
+    createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+
+    createInfo.presentMode = presentMode;
+    createInfo.clipped = VK_TRUE;             // 他のウインドウが重なったりしたときにその部分のピクセルの色を気にしない(？)
+    createInfo.oldSwapchain = VK_NULL_HANDLE; // ウインドウのリサイズ等によって使用していたスワップチェインが使えなくなって作り直す時に、この部分に古いスワップチェインを渡す
+
+    // スワップチェインオブジェクトの作成。失敗したら例外を投げる
+    if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create swap chain!");
+    }
+}
+
 VkSurfaceFormatKHR HelloTriangleApplication::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats)
 {
     // スワップチェインが対応している画像フォーマットの中から、BGRAが8ビットずつのフォーマットでsRGB色空間の値を扱うものを探して返す
@@ -477,6 +545,9 @@ void HelloTriangleApplication::mainLoop()
 
 void HelloTriangleApplication::cleanup()
 {
+    // deviceよりも先にdeviceに依存する機能のクリーンアップを行う
+    vkDestroySwapchainKHR(device, swapChain, nullptr);
+
     // instanceよりも先にinstanceに依存する機能のクリーンアップを行う
     vkDestroyDevice(device, nullptr);
     if (enableValidationLayers)
