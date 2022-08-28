@@ -6,6 +6,9 @@
 #include <iostream>  // デバッグメッセージを表示するのに使用
 #include <optional>  // QueueFamilyIndicesの値が未定義であるかどうかをチェック出来るようにするために必要
 #include <set>       // 今回のアプリケーションで使用するキューのIDの集合を取り扱うために必要
+#include <cstdint>   // uint32_tを使用するために必要
+#include <limits>    // numeric_limitsを使用するために必要
+#include <algorithm> // clampを使用するために必要
 // ----------GLFW(Vulkan込み)のinclude-----------
 #define VK_USE_PLATFORM_WIN32_KHR // win32のAPIを使用してウインドウにアクセスするために必要
 #define GLFW_INCLUDE_VULKAN
@@ -92,6 +95,8 @@ private:
 
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats); // スワップチェインが対応している画像フォーマットの中から最適なものを選んで返す
     VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);  // スワップチェインへの画像の渡し方の中で最適な物を選んで返す
+    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);                           // スワップチェインへ渡す画像の解像度を決定して返す
+
     void mainLoop();
     void cleanup();
 

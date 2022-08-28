@@ -440,6 +440,31 @@ VkPresentModeKHR HelloTriangleApplication::chooseSwapPresentMode(const std::vect
     return VK_PRESENT_MODE_FIFO_KHR;
 }
 
+VkExtent2D HelloTriangleApplication::chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities)
+{
+    // currentExtent.widthがuint32_tの最大値の時、自分で最適な解像度を決定する必要がある。
+    if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
+    {
+        return capabilities.currentExtent;
+    }
+    else
+    {
+        int width, height;
+        glfwGetFramebufferSize(window, &width, &height); // ピクセル単位でのウインドウのサイズを取得
+
+        VkExtent2D actualExtent = {
+            static_cast<uint32_t>(width),
+            static_cast<uint32_t>(height),
+        };
+
+        // ウインドウサイズがVulkanが対応する最小サイズから最大サイズの間に収まるように変更する。
+        actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+        actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.minImageExtent.height);
+
+        return actualExtent;
+    }
+}
+
 void HelloTriangleApplication::mainLoop()
 {
     // ウインドウが閉じられるまでwhileループを回す
