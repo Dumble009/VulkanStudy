@@ -421,7 +421,23 @@ VkSurfaceFormatKHR HelloTriangleApplication::chooseSwapSurfaceFormat(const std::
         }
     }
 
+    // 上記の設定に対応していなければとりあえず先頭の要素を返しておく
     return availableFormats[0];
+}
+
+VkPresentModeKHR HelloTriangleApplication::chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes)
+{
+    // MAILBOXが使えるならそれを使う。 MAILBOXは、キューが満杯の時に新しいレンダリング結果が来た時に新しいもので上書きする方式。
+    for (const auto &availablePresentMode : availablePresentModes)
+    {
+        if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+        {
+            return availablePresentMode;
+        }
+    }
+
+    // FIFO_KHRは絶対に対応しているので、MAILBOXがだめならとりあえずこれを使う。
+    return VK_PRESENT_MODE_FIFO_KHR;
 }
 
 void HelloTriangleApplication::mainLoop()
