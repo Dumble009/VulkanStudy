@@ -15,6 +15,7 @@ int main(void)
     }
     catch (const std::exception &e)
     {
+        std::cerr << "error finished" << std::endl;
         std::cerr << e.what() << std::endl;
 
         return EXIT_FAILURE;

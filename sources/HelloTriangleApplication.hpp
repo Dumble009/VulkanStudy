@@ -65,6 +65,7 @@ private:
     VkSurfaceKHR surface;                             // ウインドウサーフェースオブジェクト。ウインドウにレンダリング結果を表示するために必要
     VkSwapchainKHR swapChain;                         // スワップチェインオブジェクト
     std::vector<VkImage> swapChainImages;             // スワップチェインに表示する画像のリスト
+    std::vector<VkImageView> swapChainImageViews;     // スワップチェインに表示する各画像にアクセスするために必要なオブジェクト
     VkFormat swapChainImageFormat;                    // スワップチェインに表示する画像の形式
     VkExtent2D swapChainExtent;                       // スワップチェインに表示する画像のサイズ
 
@@ -97,7 +98,8 @@ private:
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);          // 物理GPU deviceが持っているキューファミリーの中から要求する機能に対応するものを探す
     SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device); // 物理GPU deviceが対応しているスワップチェインの情報を取得する
 
-    void createSwapChain(); // Vulkanのレンダリング結果をウインドウに表示するためのスワップチェインを作成
+    void createSwapChain();  // Vulkanのレンダリング結果をウインドウに表示するためのスワップチェインを作成
+    void createImageViews(); // スワップチェイン内の各画像にアクセスするためのビューを作成する
 
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats); // スワップチェインが対応している画像フォーマットの中から最適なものを選んで返す
     VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);  // スワップチェインへの画像の渡し方の中で最適な物を選んで返す
