@@ -475,6 +475,14 @@ void HelloTriangleApplication::createSwapChain()
     {
         throw std::runtime_error("failed to create swap chain!");
     }
+
+    // スワップチェインに渡す画像のリストを作る
+    vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
+    swapChainImages.resize(imageCount);
+    vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
+
+    swapChainImageFormat = surfaceFormat.format;
+    swapChainExtent = extent;
 }
 
 VkSurfaceFormatKHR HelloTriangleApplication::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats)

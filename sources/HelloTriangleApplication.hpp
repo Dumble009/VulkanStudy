@@ -64,6 +64,9 @@ private:
     VkDevice device;                                  // GPUの論理デバイスの情報が格納されるオブジェクト。
     VkSurfaceKHR surface;                             // ウインドウサーフェースオブジェクト。ウインドウにレンダリング結果を表示するために必要
     VkSwapchainKHR swapChain;                         // スワップチェインオブジェクト
+    std::vector<VkImage> swapChainImages;             // スワップチェインに表示する画像のリスト
+    VkFormat swapChainImageFormat;                    // スワップチェインに表示する画像の形式
+    VkExtent2D swapChainExtent;                       // スワップチェインに表示する画像のサイズ
 
     // -----関数の宣言-----
     void initVulkan();                                 // Vulkan関連の初期化を行う
