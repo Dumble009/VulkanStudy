@@ -517,6 +517,10 @@ void HelloTriangleApplication::createImageViews()
     }
 }
 
+void HelloTriangleApplication::createGraphicsPipeline()
+{
+}
+
 VkSurfaceFormatKHR HelloTriangleApplication::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats)
 {
     // スワップチェインが対応している画像フォーマットの中から、BGRAが8ビットずつのフォーマットでsRGB色空間の値を扱うものを探して返す
