@@ -9,6 +9,7 @@
 #include <cstdint>   // uint32_tを使用するために必要
 #include <limits>    // numeric_limitsを使用するために必要
 #include <algorithm> // clampを使用するために必要
+#include <fstream>   // シェーダーコードを読み込むために必要
 // ----------GLFW(Vulkan込み)のinclude-----------
 #define VK_USE_PLATFORM_WIN32_KHR // win32のAPIを使用してウインドウにアクセスするために必要
 #define GLFW_INCLUDE_VULKAN
@@ -70,6 +71,8 @@ private:
     VkExtent2D swapChainExtent;                       // スワップチェインに表示する画像のサイズ
 
     // -----関数の宣言-----
+    static std::vector<char> readFile(const std::string &filename); // filenameのパスの指すファイルを読み込んでバイトコードのvectorとして返す
+
     void initVulkan();                                 // Vulkan関連の初期化を行う
     bool checkValidationLayerSupport();                // 指定したvalidation layerがサポートされているかを確かめる
     std::vector<const char *> getRequiredExtensions(); // GLFWからウインドウマネージャのextensionsをもらってくる

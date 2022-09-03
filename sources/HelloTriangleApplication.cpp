@@ -1,5 +1,25 @@
 #include "HelloTriangleApplication.hpp"
 
+std::vector<char> HelloTriangleApplication::readFile(const std::string &filename)
+{
+    // ate->at the end ファイルの末尾から読み始める
+    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+    if (!file.is_open())
+    {
+        throw std::runtime_error("failed to open file!");
+    }
+
+    size_t fileSize = (size_t)file.tellg(); // 末尾から読み始めているので、今の読み取り位置がファイルサイズと一致する
+    std::vector<char> buffer(fileSize);
+
+    file.seekg(0); // 読み取り位置を先頭に戻す
+    file.read(buffer.data(), fileSize);
+
+    file.close();
+
+    return std::move(buffer);
+}
+
 void HelloTriangleApplication::run()
 {
     initWindow();
@@ -17,6 +37,7 @@ void HelloTriangleApplication::initVulkan()
     createLogicalDevice();
     createSwapChain();
     createImageViews();
+    createGraphicsPipeline();
 }
 
 void HelloTriangleApplication::createInstance()
@@ -519,6 +540,8 @@ void HelloTriangleApplication::createImageViews()
 
 void HelloTriangleApplication::createGraphicsPipeline()
 {
+    auto vertexShaderCode = readFile("shaders/vert.spv");
+    auto fragShaderCode = readFile("shaders/frag.spv");
 }
 
 VkSurfaceFormatKHR HelloTriangleApplication::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats)
