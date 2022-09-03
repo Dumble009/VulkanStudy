@@ -104,7 +104,8 @@ private:
     void createSwapChain();  // Vulkanのレンダリング結果をウインドウに表示するためのスワップチェインを作成
     void createImageViews(); // スワップチェイン内の各画像にアクセスするためのビューを作成する
 
-    void createGraphicsPipeline(); // グラフィックパイプラインを作成する
+    void createGraphicsPipeline();                                    // グラフィックパイプラインを作成する
+    VkShaderModule createShaderModule(const std::vector<char> &code); // shaderのバイトコードからシェーダーモジュールを作成する
 
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats); // スワップチェインが対応している画像フォーマットの中から最適なものを選んで返す
     VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);  // スワップチェインへの画像の渡し方の中で最適な物を選んで返す
