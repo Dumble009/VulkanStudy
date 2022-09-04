@@ -692,11 +692,13 @@ VkShaderModule HelloTriangleApplication::createShaderModule(const std::vector<ch
 {
     VkShaderModuleCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    createInfo.codeSize = code.size();
     createInfo.pCode = reinterpret_cast<const uint32_t *>(code.data()); // uint32_tの配列として渡すする必要があるのでreinterpretする
 
     VkShaderModule shaderModule;
     if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
     {
+        printf("shader size %d\n", (int)code.size());
         throw std::runtime_error("failed to create shader module!");
     }
 
