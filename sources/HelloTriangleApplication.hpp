@@ -69,6 +69,7 @@ private:
     std::vector<VkImageView> swapChainImageViews;     // スワップチェインに表示する各画像にアクセスするために必要なオブジェクト
     VkFormat swapChainImageFormat;                    // スワップチェインに表示する画像の形式
     VkExtent2D swapChainExtent;                       // スワップチェインに表示する画像のサイズ
+    VkRenderPass renderPass;                          // レンダーパスのオブジェクト
     VkPipelineLayout pipelineLayout;                  // シェーダーにグローバルな変数を渡して動的に挙動を変更するために使用する。
 
     // -----関数の宣言-----
@@ -105,6 +106,7 @@ private:
     void createSwapChain();  // Vulkanのレンダリング結果をウインドウに表示するためのスワップチェインを作成
     void createImageViews(); // スワップチェイン内の各画像にアクセスするためのビューを作成する
 
+    void createRenderPass();                                          // フレームバッファーに含まれるバッファの種類や数などを定める
     void createGraphicsPipeline();                                    // グラフィックパイプラインを作成する
     VkShaderModule createShaderModule(const std::vector<char> &code); // shaderのバイトコードからシェーダーモジュールを作成する
 

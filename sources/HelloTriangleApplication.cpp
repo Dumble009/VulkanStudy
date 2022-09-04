@@ -538,6 +538,42 @@ void HelloTriangleApplication::createImageViews()
     }
 }
 
+void HelloTriangleApplication::createRenderPass()
+{
+    // 色を取り扱うサブパスに渡されるテクスチャの情報を定義する
+    VkAttachmentDescription colorAttachment{};
+    colorAttachment.format = swapChainImageFormat;
+    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;              // フレームバッファに書き込む前に既存の内容をクリアする
+    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;            // フレームバッファに書き込まれた値を保持し、後でウインドウに表示したりする際に読みだされるようにする
+    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;   // ステンシルの値はクリアされてもされなくてもどっちでもいい
+    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; // ステンシルの値は保持されてもされなくてもどっちでもいい
+    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;         // 最初にフレームバッファに書き込まれているデータの構造は気にしない
+    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;     // フレームバッファに書き込んだ後のデータはスワップチェインに表示できる形式にする
+
+    // サブパスに渡すテクスチャのメタデータ
+    VkAttachmentReference colorAttachmentRef{};
+    colorAttachmentRef.attachment = 0;                                    // どのテクスチャについてか。レンダーパス全体における0番のテクスチャのメタ情報
+    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; // 色を取り扱うのに最適となるようにサブパスを並び変えるように指示する
+
+    VkSubpassDescription subpass{};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS; // このサブパスがレンダリング用のものであることを示す
+    subpass.colorAttachmentCount = 1;                            // このサブパスが何枚のテクスチャを持つか
+    subpass.pColorAttachments = &colorAttachmentRef;             // サブパスに渡されてくる各テクスチャのメタデータの配列(ポインタ)
+
+    VkRenderPassCreateInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassInfo.attachmentCount = 1;             // レンダーパス全体で扱うテクスチャの数
+    renderPassInfo.pAttachments = &colorAttachment; // レンダーパスで扱うテクスチャ情報の配列
+    renderPassInfo.subpassCount = 1;                // レンダーパスに含まれるサブパスの数
+    renderPassInfo.pSubpasses = &subpass;           // レンダーパスに含まれるサブパスの配列
+
+    if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create render pass!");
+    }
+}
+
 void HelloTriangleApplication::createGraphicsPipeline()
 {
     auto vertexShaderCode = readFile("shaders/vert.spv");
@@ -774,6 +810,7 @@ void HelloTriangleApplication::mainLoop()
 void HelloTriangleApplication::cleanup()
 {
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+    vkDestroyRenderPass(device, renderPass, nullptr);
     for (auto imageView : swapChainImageViews)
     {
         vkDestroyImageView(device, imageView, nullptr);
