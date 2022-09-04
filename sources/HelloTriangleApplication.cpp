@@ -6,6 +6,7 @@ std::vector<char> HelloTriangleApplication::readFile(const std::string &filename
     std::ifstream file(filename, std::ios::ate | std::ios::binary);
     if (!file.is_open())
     {
+        printf("file name is : %s\n", filename.c_str());
         throw std::runtime_error("failed to open file!");
     }
 
@@ -37,6 +38,7 @@ void HelloTriangleApplication::initVulkan()
     createLogicalDevice();
     createSwapChain();
     createImageViews();
+    createRenderPass();
     createGraphicsPipeline();
 }
 
@@ -719,6 +721,31 @@ void HelloTriangleApplication::createGraphicsPipeline()
         throw std::runtime_error("failed to create pipeline layout!");
     }
 
+    VkGraphicsPipelineCreateInfo pipelineInfo{};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineInfo.stageCount = 2;         // グラフィックパイプラインに含まれるシェーダーの段階の数
+    pipelineInfo.pStages = shaderStages; // バーテックスシェーダーとフラグメントシェーダーを使用することを指示する
+    // パイプライン中の固定ステージの設定
+    pipelineInfo.pVertexInputState = &vertexInputInfo;
+    pipelineInfo.pInputAssemblyState = &inputAssembly;
+    pipelineInfo.pViewportState = &viewportState;
+    pipelineInfo.pRasterizationState = &rasterizer;
+    pipelineInfo.pMultisampleState = &multisampling;
+    pipelineInfo.pDepthStencilState = nullptr;
+    pipelineInfo.pColorBlendState = &colorBlending;
+    pipelineInfo.pDynamicState = &dynamicState;
+    pipelineInfo.layout = pipelineLayout;
+    pipelineInfo.renderPass = renderPass;
+    pipelineInfo.subpass = 0; // 使用するサブパスのインデックス
+    // どのパイプラインから派生するか。今回はどのパイプラインからも派生しない
+    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // 派生するパイプラインオブジェクト
+    pipelineInfo.basePipelineIndex = -1;              // 派生するパイプラインのインデックス
+
+    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create graphics pipeline!");
+    }
+
     // グラフィックスパイプラインが出来たらシェーダーモジュールはもう不要なので削除する
     vkDestroyShaderModule(device, fragShaderModule, nullptr);
     vkDestroyShaderModule(device, vertShaderModule, nullptr);
@@ -809,6 +836,7 @@ void HelloTriangleApplication::mainLoop()
 
 void HelloTriangleApplication::cleanup()
 {
+    vkDestroyPipeline(device, graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     vkDestroyRenderPass(device, renderPass, nullptr);
     for (auto imageView : swapChainImageViews)

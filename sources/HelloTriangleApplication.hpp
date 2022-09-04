@@ -69,8 +69,9 @@ private:
     std::vector<VkImageView> swapChainImageViews;     // スワップチェインに表示する各画像にアクセスするために必要なオブジェクト
     VkFormat swapChainImageFormat;                    // スワップチェインに表示する画像の形式
     VkExtent2D swapChainExtent;                       // スワップチェインに表示する画像のサイズ
-    VkRenderPass renderPass;                          // レンダーパスのオブジェクト
+    VkRenderPass renderPass;                          // パイプラインの中で取り扱われるテクスチャ群をまとめたレンダーパスのオブジェクト
     VkPipelineLayout pipelineLayout;                  // シェーダーにグローバルな変数を渡して動的に挙動を変更するために使用する。
+    VkPipeline graphicsPipeline;
 
     // -----関数の宣言-----
     static std::vector<char> readFile(const std::string &filename); // filenameのパスの指すファイルを読み込んでバイトコードのvectorとして返す
