@@ -562,6 +562,127 @@ void HelloTriangleApplication::createGraphicsPipeline()
 
     VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
+    // パイプライン作成後に動的に変更可能なプロパティを定義する
+    // ここではフレームバッファの描画に使う範囲やウインドウのサイズを変更できるようにしておく
+    std::vector<VkDynamicState> dynamicStates = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR,
+    };
+    VkPipelineDynamicStateCreateInfo dynamicState{};
+    dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+    dynamicState.pDynamicStates = dynamicStates.data();
+
+    // 頂点データの取り扱い方を定義する
+    // 今回はシェーダーにハードコーディングしているので、頂点データは存在しない事にしている
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vertexInputInfo.vertexBindingDescriptionCount = 0;
+    vertexInputInfo.pVertexBindingDescriptions = nullptr;
+    vertexInputInfo.vertexAttributeDescriptionCount = 0;
+    vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+
+    // 頂点データがどのような図形を表しているのかを定義する。
+    // ここでは、3つの頂点ごとにそれらを結んだ三角形を表すように指定している
+    VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+    inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    inputAssembly.primitiveRestartEnable = false; // ある三角形で使われた頂点を次の三角形で再利用する場合に、どの頂点を再利用するかを手で設定できるかどうか。
+
+    // ビューポートの範囲の指定
+    // ウインドウのどれだけの範囲をレンダリングのために使用するか
+    // ここでは端から端まで全部に描画するよう指定している
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = (float)swapChainExtent.width;
+    viewport.height = (float)swapChainExtent.height;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    // シザーの範囲の指定
+    // レンダリング結果のどの範囲を使用するか。この範囲の外のレンダリング結果は破棄される
+    // ここでは端から端まで全てのレンダリング結果を描画するように指定している
+    VkRect2D scissor{};
+    scissor.offset = {0, 0};
+    scissor.extent = swapChainExtent;
+
+    // ビューポートとシザーをいくつ使用するかの定義
+    // GPUによっては複数のビューポートを扱えたりするらしい
+    // 今回は一つしか使わない。
+    // またビューポートとシザーを静的な値でフィックスしたい場合はここでビューポートとシザーの値を渡す
+    VkPipelineViewportStateCreateInfo viewportState{};
+    viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewportState.viewportCount = 1;
+    viewportState.scissorCount = 1;
+
+    // ラスタライザの設定
+    // ラスタライザは三角形などの図形をピクセル単位に分割し、フラグメントシェーダーを適用する
+    VkPipelineRasterizationStateCreateInfo rasterizer{};
+    rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizer.depthClampEnable = VK_FALSE;         // ニアプレーンとファープレーンの範囲の外にあるポリゴンを内部に収めるか
+    rasterizer.rasterizerDiscardEnable = VK_FALSE;  // これがtrueだとラスタライザはポリゴンを無視する
+    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;  // ポリゴンをどう描画するか。ここでは三角形として中身を埋めるように指定している
+    rasterizer.lineWidth = 1.0f;                    // 線を描画する際の太さ
+    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;    // カリングの設定。ここではバックカリングすることを指定している
+    rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE; // 何をもって正面を向いているとするかの指定。頂点が時計回りに並んでいたら正面としている
+    rasterizer.depthBiasEnable = VK_FALSE;          // 深度値にバイアスを加えるかの設定。ここでは無効としている
+    rasterizer.depthBiasConstantFactor = 0.0f;
+    rasterizer.depthBiasClamp = 0.0f;
+    rasterizer.depthBiasSlopeFactor = 0.0f;
+
+    // AAのマルチサンプリングの設定
+    // ここではAAは使用しないように設定している
+    VkPipelineMultisampleStateCreateInfo multisampling{};
+    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisampling.sampleShadingEnable = VK_FALSE;
+    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    multisampling.minSampleShading = 1.0f;
+    multisampling.pSampleMask = nullptr;
+    multisampling.alphaToCoverageEnable = VK_FALSE;
+    multisampling.alphaToOneEnable = VK_FALSE;
+
+    // カラーブレンディングの設定
+    // AttachmentStateの方はフレームバッファごとの独立した設定
+    // 今回はカラーブレンディングは無効化している
+    VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachment.blendEnable = VK_FALSE;
+    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+    colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
+    // グローバルなカラーブレンディングの設定
+    // また、ビットワイズな操作を適用することも出来る。
+    // ここではさっき作ったAttachmentをフレームバッファと結びつけ、ビットワイズな操作は無効化している
+    VkPipelineColorBlendStateCreateInfo colorBlending{};
+    colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    colorBlending.logicOpEnable = VK_FALSE;
+    colorBlending.logicOp = VK_LOGIC_OP_COPY;
+    colorBlending.attachmentCount = 1;
+    colorBlending.pAttachments = &colorBlendAttachment;
+    colorBlending.blendConstants[0] = 0.0f;
+    colorBlending.blendConstants[1] = 0.0f;
+    colorBlending.blendConstants[2] = 0.0f;
+    colorBlending.blendConstants[3] = 0.0f;
+
+    // シェーダーにグローバルな変数を渡し、動的に挙動を変更したい時に使用する。
+    // 今回は使用しない。
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = 0;
+    pipelineLayoutInfo.pSetLayouts = nullptr;
+    pipelineLayoutInfo.pushConstantRangeCount = 0;
+    pipelineLayoutInfo.pPushConstantRanges = nullptr;
+
+    if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create pipeline layout!");
+    }
+
     // グラフィックスパイプラインが出来たらシェーダーモジュールはもう不要なので削除する
     vkDestroyShaderModule(device, fragShaderModule, nullptr);
     vkDestroyShaderModule(device, vertShaderModule, nullptr);
@@ -650,6 +771,7 @@ void HelloTriangleApplication::mainLoop()
 
 void HelloTriangleApplication::cleanup()
 {
+    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     for (auto imageView : swapChainImageViews)
     {
         vkDestroyImageView(device, imageView, nullptr);
