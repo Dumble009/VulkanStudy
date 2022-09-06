@@ -40,6 +40,7 @@ void HelloTriangleApplication::initVulkan()
     createImageViews();
     createRenderPass();
     createGraphicsPipeline();
+    createFramebuffers();
 }
 
 void HelloTriangleApplication::createInstance()
@@ -768,6 +769,30 @@ VkShaderModule HelloTriangleApplication::createShaderModule(const std::vector<ch
     return shaderModule;
 }
 
+void HelloTriangleApplication::createFramebuffers()
+{
+    // スワップチェインの画像1枚につきフレームバッファは一つ必要
+    swapChainFramebuffer.resize(swapChainImageViews.size());
+
+    for (size_t i = 0; i < swapChainImages.size(); i++)
+    {
+        VkImageView attachments[] = {swapChainImageViews[i]};
+
+        VkFramebufferCreateInfo framebufferInfo{};
+        framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebufferInfo.renderPass = renderPass;
+        framebufferInfo.attachmentCount = 1;
+        framebufferInfo.pAttachments = attachments;
+        framebufferInfo.width = swapChainExtent.width;
+        framebufferInfo.height = swapChainExtent.height;
+        framebufferInfo.layers = 1;
+        if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffer[i]) != VK_SUCCESS)
+        {
+            throw std::runtime_error("failed to create framebuffer!");
+        }
+    }
+}
+
 VkSurfaceFormatKHR HelloTriangleApplication::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats)
 {
     // スワップチェインが対応している画像フォーマットの中から、BGRAが8ビットずつのフォーマットでsRGB色空間の値を扱うものを探して返す
@@ -836,6 +861,10 @@ void HelloTriangleApplication::mainLoop()
 
 void HelloTriangleApplication::cleanup()
 {
+    for (auto framebuffer : swapChainFramebuffer)
+    {
+        vkDestroyFramebuffer(device, framebuffer, nullptr);
+    }
     vkDestroyPipeline(device, graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     vkDestroyRenderPass(device, renderPass, nullptr);

@@ -67,6 +67,7 @@ private:
     VkSwapchainKHR swapChain;                         // スワップチェインオブジェクト
     std::vector<VkImage> swapChainImages;             // スワップチェインに表示する画像のリスト
     std::vector<VkImageView> swapChainImageViews;     // スワップチェインに表示する各画像にアクセスするために必要なオブジェクト
+    std::vector<VkFramebuffer> swapChainFramebuffer;  // スワップチェインに含まれる各画像のフレームバッファのリスト
     VkFormat swapChainImageFormat;                    // スワップチェインに表示する画像の形式
     VkExtent2D swapChainExtent;                       // スワップチェインに表示する画像のサイズ
     VkRenderPass renderPass;                          // パイプラインの中で取り扱われるテクスチャ群をまとめたレンダーパスのオブジェクト
@@ -104,13 +105,13 @@ private:
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);          // 物理GPU deviceが持っているキューファミリーの中から要求する機能に対応するものを探す
     SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device); // 物理GPU deviceが対応しているスワップチェインの情報を取得する
 
-    void createSwapChain();  // Vulkanのレンダリング結果をウインドウに表示するためのスワップチェインを作成
-    void createImageViews(); // スワップチェイン内の各画像にアクセスするためのビューを作成する
+    void createSwapChain();        // Vulkanのレンダリング結果をウインドウに表示するためのスワップチェインを作成
+    void createImageViews();       // スワップチェイン内の各画像にアクセスするためのビューを作成する
+    void createRenderPass();       // フレームバッファーに含まれるバッファの種類や数などを定める
+    void createGraphicsPipeline(); // グラフィックパイプラインを作成する
+    void createFramebuffers();     // フレームバッファを作成する
 
-    void createRenderPass();                                          // フレームバッファーに含まれるバッファの種類や数などを定める
-    void createGraphicsPipeline();                                    // グラフィックパイプラインを作成する
-    VkShaderModule createShaderModule(const std::vector<char> &code); // shaderのバイトコードからシェーダーモジュールを作成する
-
+    VkShaderModule createShaderModule(const std::vector<char> &code);                                    // shaderのバイトコードからシェーダーモジュールを作成する
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats); // スワップチェインが対応している画像フォーマットの中から最適なものを選んで返す
     VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);  // スワップチェインへの画像の渡し方の中で最適な物を選んで返す
     VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);                           // スワップチェインへ渡す画像の解像度を決定して返す
