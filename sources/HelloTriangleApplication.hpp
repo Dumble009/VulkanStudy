@@ -73,7 +73,8 @@ private:
     VkRenderPass renderPass;                          // パイプラインの中で取り扱われるテクスチャ群をまとめたレンダーパスのオブジェクト
     VkPipelineLayout pipelineLayout;                  // シェーダーにグローバルな変数を渡して動的に挙動を変更するために使用する。
     VkPipeline graphicsPipeline;
-    VkCommandPool commandPool; // レンダリングなどのVulkanへのコマンドを保持するバッファ
+    VkCommandPool commandPool;     // レンダリングなどのVulkanへのコマンドをキューに流し込むオブジェクト
+    VkCommandBuffer commandBuffer; // コマンドプールの記憶実体(?)
 
     // -----関数の宣言-----
     static std::vector<char> readFile(const std::string &filename); // filenameのパスの指すファイルを読み込んでバイトコードのvectorとして返す
@@ -112,6 +113,7 @@ private:
     void createGraphicsPipeline(); // グラフィックパイプラインを作成する
     void createFramebuffers();     // フレームバッファを作成する
     void createCommandPool();      // コマンドプールを作成する
+    void createCommandBuffer();    // コマンドバッファを作成する
 
     VkShaderModule createShaderModule(const std::vector<char> &code);                                    // shaderのバイトコードからシェーダーモジュールを作成する
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats); // スワップチェインが対応している画像フォーマットの中から最適なものを選んで返す
