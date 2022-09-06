@@ -41,6 +41,7 @@ void HelloTriangleApplication::initVulkan()
     createRenderPass();
     createGraphicsPipeline();
     createFramebuffers();
+    createCommandPool();
 }
 
 void HelloTriangleApplication::createInstance()
@@ -793,6 +794,21 @@ void HelloTriangleApplication::createFramebuffers()
     }
 }
 
+void HelloTriangleApplication::createCommandPool()
+{
+    QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);
+
+    VkCommandPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;      // コマンドを個別に上書きできるようにする
+    poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value(); // コマンドプールは一つのキューにつき一つ作られる。ここではグラフィックコマンドを扱うキューに対応するプールを作っている
+
+    if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create command pool!");
+    }
+}
+
 VkSurfaceFormatKHR HelloTriangleApplication::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats)
 {
     // スワップチェインが対応している画像フォーマットの中から、BGRAが8ビットずつのフォーマットでsRGB色空間の値を扱うものを探して返す
@@ -861,6 +877,7 @@ void HelloTriangleApplication::mainLoop()
 
 void HelloTriangleApplication::cleanup()
 {
+    vkDestroyCommandPool(device, commandPool, nullptr);
     for (auto framebuffer : swapChainFramebuffer)
     {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
