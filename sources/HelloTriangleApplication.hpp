@@ -67,7 +67,7 @@ private:
     VkSwapchainKHR swapChain;                         // スワップチェインオブジェクト
     std::vector<VkImage> swapChainImages;             // スワップチェインに表示する画像のリスト
     std::vector<VkImageView> swapChainImageViews;     // スワップチェインに表示する各画像にアクセスするために必要なオブジェクト
-    std::vector<VkFramebuffer> swapChainFramebuffer;  // スワップチェインに含まれる各画像のフレームバッファのリスト
+    std::vector<VkFramebuffer> swapChainFramebuffers; // スワップチェインに含まれる各画像のフレームバッファのリスト
     VkFormat swapChainImageFormat;                    // スワップチェインに表示する画像の形式
     VkExtent2D swapChainExtent;                       // スワップチェインに表示する画像のサイズ
     VkRenderPass renderPass;                          // パイプラインの中で取り扱われるテクスチャ群をまとめたレンダーパスのオブジェクト
@@ -114,6 +114,8 @@ private:
     void createFramebuffers();     // フレームバッファを作成する
     void createCommandPool();      // コマンドプールを作成する
     void createCommandBuffer();    // コマンドバッファを作成する
+
+    void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex); // コマンドバッファにコマンドを記録する
 
     VkShaderModule createShaderModule(const std::vector<char> &code);                                    // shaderのバイトコードからシェーダーモジュールを作成する
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats); // スワップチェインが対応している画像フォーマットの中から最適なものを選んで返す

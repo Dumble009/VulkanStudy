@@ -774,7 +774,7 @@ VkShaderModule HelloTriangleApplication::createShaderModule(const std::vector<ch
 void HelloTriangleApplication::createFramebuffers()
 {
     // スワップチェインの画像1枚につきフレームバッファは一つ必要
-    swapChainFramebuffer.resize(swapChainImageViews.size());
+    swapChainFramebuffers.resize(swapChainImageViews.size());
 
     for (size_t i = 0; i < swapChainImages.size(); i++)
     {
@@ -788,7 +788,7 @@ void HelloTriangleApplication::createFramebuffers()
         framebufferInfo.width = swapChainExtent.width;
         framebufferInfo.height = swapChainExtent.height;
         framebufferInfo.layers = 1;
-        if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffer[i]) != VK_SUCCESS)
+        if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS)
         {
             throw std::runtime_error("failed to create framebuffer!");
         }
@@ -823,6 +823,72 @@ void HelloTriangleApplication::createCommandBuffer()
         throw std::runtime_error("failed to allocate command buffers!");
     }
     // コマンドバッファはコマンドプールが破棄されたときに自動的に破棄されるのでcleanupで何かする必要は無い
+}
+
+void HelloTriangleApplication::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
+{
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = 0;                  // コマンドバッファの扱い方を指定できる。ここでは何も指定しない
+    beginInfo.pInheritanceInfo = nullptr; // 二次的なコマンドバッファの場合一次のバッファから状態等を継承できる。ここでは関係なので何も継承はしない
+
+    // コマンドバッファへのコマンドの書き込みを開始する
+    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to begin recording command buffer!");
+    }
+
+    // このコマンドでどのレンダーパスをどのように扱うかを設定する
+    VkRenderPassBeginInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    // どのレンダーパスのどのフレームバッファに書き込むか
+    renderPassInfo.renderPass = renderPass;
+    renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
+    // どこからどの程度のサイズでレンダリングを行うか。ここでは端から端まで指定している
+    renderPassInfo.renderArea.offset = {0, 0};
+    renderPassInfo.renderArea.extent = swapChainExtent;
+    // 背景色(何もポリゴンが存在しないところ)を何色に塗るか
+    VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+    renderPassInfo.clearValueCount = 1;
+    renderPassInfo.pClearValues = &clearColor;
+
+    // コマンドバッファに今まで設定したレンダーパス関連の情報を流し込むコマンド
+    // 最後のフラグは、このコマンドバッファが二次的なものでないことを示している
+    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    // コマンドバッファをグラフィックスパイプラインと結びつけるコマンド
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+    // ビューポートとシザーの設定を動的に変えられるようにしたので、その値を設定するコマンド
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = static_cast<float>(swapChainExtent.width);
+    viewport.height = static_cast<float>(swapChainExtent.height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+    VkRect2D scissor{};
+    scissor.offset = {0, 0};
+    scissor.extent = swapChainExtent;
+    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+    // 描画コマンド
+    // 第二引数以降の意味は
+    // vertexCount : 今回は三角形を表示するので3
+    // instanceCount : 今回はインスタンス度レンダリングを行わないので1を指定する
+    // firstVertex : 何番目の頂点からレンダリングを始めるか
+    // firstInstance : 何番目のインスタンスからレンダリングを始めるか
+    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+
+    // レンダーパスを操作するのを終了する
+    vkCmdEndRenderPass(commandBuffer);
+
+    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to record command buffer!");
+    }
 }
 
 VkSurfaceFormatKHR HelloTriangleApplication::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats)
@@ -894,7 +960,7 @@ void HelloTriangleApplication::mainLoop()
 void HelloTriangleApplication::cleanup()
 {
     vkDestroyCommandPool(device, commandPool, nullptr);
-    for (auto framebuffer : swapChainFramebuffer)
+    for (auto framebuffer : swapChainFramebuffers)
     {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
     }
