@@ -1,7 +1,7 @@
 {
 	"version": "2.0.0",
-    "tasks": [
-        {
+	"tasks": [
+		{
 			"label": "cmake",
 			"type": "shell",
 			"options": {
@@ -10,15 +10,29 @@
 			"command": "cmake --build ${workspaceRoot}/build --config Release --target all -j 8 --",
 		},
 		{
-			"type":"shell",
+			"type": "shell",
+			"label": "compile shader",
+			"command": "${workspaceRoot}/compile_shader.bat",
+			"dependsOn": [
+				"cmake"
+			],
+			"dependsOrder": "parallel",
+			"group": {
+				"kind": "build"
+			}
+		},
+		{
+			"type": "shell",
 			"label": "run executable",
 			"command": "${workspaceRoot}/build/VulkanStudy.exe",
-			"dependsOn":["cmake"],
+			"dependsOn": [
+				"compile shader"
+			],
 			"dependsOrder": "sequence",
 			"group": {
 				"kind": "build",
 				"isDefault": true
 			}
 		}
-    ]
+	]
 }
