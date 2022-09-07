@@ -76,6 +76,10 @@ private:
     VkCommandPool commandPool;     // レンダリングなどのVulkanへのコマンドをキューに流し込むオブジェクト
     VkCommandBuffer commandBuffer; // コマンドプールの記憶実体(?)
 
+    VkSemaphore imageAvailableSemaphore; // スワップチェインから書き込み先の画像を取得してくるのを待つためのセマフォ
+    VkSemaphore renderFinishedSemaphore; // スワップチェインへの書き込みが完了するのを待つためのセマフォ
+    VkFence inFlightFence;               // あるフレームへのレンダリングが終わるのを待つためのフェンス
+
     // -----関数の宣言-----
     static std::vector<char> readFile(const std::string &filename); // filenameのパスの指すファイルを読み込んでバイトコードのvectorとして返す
 
@@ -114,6 +118,7 @@ private:
     void createFramebuffers();     // フレームバッファを作成する
     void createCommandPool();      // コマンドプールを作成する
     void createCommandBuffer();    // コマンドバッファを作成する
+    void createSyncObjects();      // セマフォやフェンスなど同期するためのオブジェクトを作成する
 
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex); // コマンドバッファにコマンドを記録する
 
@@ -123,6 +128,8 @@ private:
     VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);                           // スワップチェインへ渡す画像の解像度を決定して返す
 
     void mainLoop();
+    void drawFrame();
+
     void cleanup();
 
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(

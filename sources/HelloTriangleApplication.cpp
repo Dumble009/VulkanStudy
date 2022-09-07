@@ -43,6 +43,7 @@ void HelloTriangleApplication::initVulkan()
     createFramebuffers();
     createCommandPool();
     createCommandBuffer();
+    createSyncObjects();
 }
 
 void HelloTriangleApplication::createInstance()
@@ -573,6 +574,24 @@ void HelloTriangleApplication::createRenderPass()
     renderPassInfo.subpassCount = 1;                // レンダーパスに含まれるサブパスの数
     renderPassInfo.pSubpasses = &subpass;           // レンダーパスに含まれるサブパスの配列
 
+    // サブパス間の依存関係を定義する
+    VkSubpassDependency dependency{};
+    // どのサブパスからどのサブパスの間の依存関係なのか
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL; // 暗黙的に作られる全てのサブパスが開始される前段階のサブパスをsrcとして指定
+    dependency.dstSubpass = 0;                   // 0番目のサブパス(上で作ったサブパス)をdstとして指定
+    // どのステージのどの操作がどのステージのどの操作を待つのかを指定する
+    // 待たれる対象
+    // アタッチメントへの出力のステージで出力画像への色の出力が完了する
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.srcAccessMask = 0; // ここで操作の種類を指定するが、何も指定しないと全ての操作になる(?)
+    // 待つ対象
+    // アタッチメントへの出力のステージで、画像への色の出力を行う
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+    renderPassInfo.dependencyCount = 1;
+    renderPassInfo.pDependencies = &dependency;
+
     if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to create render pass!");
@@ -825,6 +844,23 @@ void HelloTriangleApplication::createCommandBuffer()
     // コマンドバッファはコマンドプールが破棄されたときに自動的に破棄されるのでcleanupで何かする必要は無い
 }
 
+void HelloTriangleApplication::createSyncObjects()
+{
+    VkSemaphoreCreateInfo semaphoreInfo{};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    VkFenceCreateInfo fenceInfo{};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; // 最初のフレームをレンダリングする時にフェンスがシグナルされていないと無限に待機してしまうので、最初にシグナルが立った状態にしておく
+
+    if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS ||
+        vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphore) != VK_SUCCESS ||
+        vkCreateFence(device, &fenceInfo, nullptr, &inFlightFence) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create semaphores!");
+    }
+}
+
 void HelloTriangleApplication::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
     VkCommandBufferBeginInfo beginInfo{};
@@ -954,11 +990,80 @@ void HelloTriangleApplication::mainLoop()
     {
         // 入力などのイベントを受け取るのに必要らしい
         glfwPollEvents();
+        drawFrame();
     }
+
+    // 裏でレンダリング等のプロセスが走っている時にcleanupが呼ばれると厄介なので、
+    // 全ての処理が完了するまで待つ
+    vkDeviceWaitIdle(device);
+}
+
+void HelloTriangleApplication::drawFrame()
+{
+    // フェンスを利用して前のフレームのレンダリングが完了するのを待つ
+    vkWaitForFences(device, 1, &inFlightFence, VK_TRUE, UINT64_MAX);
+    vkResetFences(device, 1, &inFlightFence); // フェンスの状態を次の待機のためにリセットする
+
+    // スワップチェインから画像を取得してくる。画像そのものが返ってくるわけではなく、次に利用可能なswapChainImagesの要素のインデックスが返ってくる
+    uint32_t imageIndex;
+    vkAcquireNextImageKHR(
+        device,
+        swapChain,
+        UINT64_MAX,
+        imageAvailableSemaphore, // 処理が終了したらこのセマフォを発火させる
+        VK_NULL_HANDLE,          // ここでフェンスを渡すこともできる。(今回は使わない)
+        &imageIndex);
+
+    // コマンドバッファにレンダリングのためのコマンドを記録していくために、まずは既存のコマンドをリセットする
+    // 第二引数としてフラグを渡すことが出来るが、ここを0にしておくことで、全てデフォルトの動作をさせている
+    vkResetCommandBuffer(commandBuffer, 0);
+    recordCommandBuffer(commandBuffer, imageIndex);
+
+    // コマンドバッファを実行するための情報を設定する
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    // このコマンドバッファのどのステージでどのセマフォを待つのか
+    // ここでは、出力画像に色を書き込むのをimageAvailableSemaphoreがシグナルされるまで待つ
+    VkSemaphore waitSemaphores[] = {imageAvailableSemaphore};
+    VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = waitSemaphores;
+    submitInfo.pWaitDstStageMask = waitStages;
+    // 実行するコマンドバッファの数とポインタ
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+    // 実行が完了したときにどのセマフォをシグナルするか
+    VkSemaphore signalSemaphores[] = {renderFinishedSemaphore};
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = signalSemaphores;
+
+    // 第四引数でコマンドバッファが完了したときに立てるフェンスを指定する
+    if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to submit draw command buffer!");
+    }
+
+    // 画像をウインドウに表示するために設定
+    VkPresentInfoKHR presentInfo{};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    // 表示するために待つセマフォ
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = signalSemaphores;
+    // どのスワップチェインのどの画像を出力するか
+    VkSwapchainKHR swapChains[] = {swapChain};
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = swapChains;
+    presentInfo.pImageIndices = &imageIndex;
+    presentInfo.pResults = nullptr;
+
+    vkQueuePresentKHR(presentQueue, &presentInfo);
 }
 
 void HelloTriangleApplication::cleanup()
 {
+    vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
+    vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
+    vkDestroyFence(device, inFlightFence, nullptr);
     vkDestroyCommandPool(device, commandPool, nullptr);
     for (auto framebuffer : swapChainFramebuffers)
     {
