@@ -647,7 +647,7 @@ void HelloTriangleApplication::createGraphicsPipeline()
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    inputAssembly.primitiveRestartEnable = false; // ある三角形で使われた頂点を次の三角形で再利用する場合に、どの頂点を再利用するかを手で設定できるかどうか。
+    inputAssembly.primitiveRestartEnable = VK_FALSE; // ある三角形で使われた頂点を次の三角形で再利用する場合に、どの頂点を再利用するかを手で設定できるかどうか。
 
     // ビューポートの範囲の指定
     // ウインドウのどれだけの範囲をレンダリングのために使用するか
@@ -706,7 +706,7 @@ void HelloTriangleApplication::createGraphicsPipeline()
     // AttachmentStateの方はフレームバッファごとの独立した設定
     // 今回はカラーブレンディングは無効化している
     VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
     colorBlendAttachment.blendEnable = VK_FALSE;
     colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
     colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
