@@ -47,6 +47,7 @@ private:
     // -----変数の宣言-----
     const int DEFAULT_WINDOW_WIDTH = 800;  // ウインドウ幅の初期値
     const int DEFAULT_WINDOW_HEIGHT = 600; // ウインドウ高さの初期値
+    const int MAX_FRAMES_IN_FLIGHT = 2;
 
     const std::vector<const char *> validationLayers = {"VK_LAYER_KHRONOS_validation"};   // 使用するvalidation layerの種類を指定
     const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME}; // 物理GPUが対応していてほしい拡張機能の名称のリスト
@@ -73,12 +74,14 @@ private:
     VkRenderPass renderPass;                          // パイプラインの中で取り扱われるテクスチャ群をまとめたレンダーパスのオブジェクト
     VkPipelineLayout pipelineLayout;                  // シェーダーにグローバルな変数を渡して動的に挙動を変更するために使用する。
     VkPipeline graphicsPipeline;
-    VkCommandPool commandPool;     // レンダリングなどのVulkanへのコマンドをキューに流し込むオブジェクト
-    VkCommandBuffer commandBuffer; // コマンドプールの記憶実体(?)
+    VkCommandPool commandPool;                   // レンダリングなどのVulkanへのコマンドをキューに流し込むオブジェクト
+    std::vector<VkCommandBuffer> commandBuffers; // コマンドプールの記憶実体(?)
 
-    VkSemaphore imageAvailableSemaphore; // スワップチェインから書き込み先の画像を取得してくるのを待つためのセマフォ
-    VkSemaphore renderFinishedSemaphore; // スワップチェインへの書き込みが完了するのを待つためのセマフォ
-    VkFence inFlightFence;               // あるフレームへのレンダリングが終わるのを待つためのフェンス
+    std::vector<VkSemaphore> imageAvailableSemaphores; // スワップチェインから書き込み先の画像を取得してくるのを待つためのセマフォ
+    std::vector<VkSemaphore> renderFinishedSemaphores; // スワップチェインへの書き込みが完了するのを待つためのセマフォ
+    std::vector<VkFence> inFlightFences;               // あるフレームへのレンダリングが終わるのを待つためのフェンス
+
+    uint32_t currentFrame = 0; // 今使用しているフレームバッファのインデックス
 
     // -----関数の宣言-----
     static std::vector<char> readFile(const std::string &filename); // filenameのパスの指すファイルを読み込んでバイトコードのvectorとして返す
@@ -117,7 +120,7 @@ private:
     void createGraphicsPipeline(); // グラフィックパイプラインを作成する
     void createFramebuffers();     // フレームバッファを作成する
     void createCommandPool();      // コマンドプールを作成する
-    void createCommandBuffer();    // コマンドバッファを作成する
+    void createCommandBuffers();   // コマンドバッファを作成する
     void createSyncObjects();      // セマフォやフェンスなど同期するためのオブジェクトを作成する
 
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex); // コマンドバッファにコマンドを記録する
