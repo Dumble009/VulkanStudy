@@ -81,6 +81,8 @@ private:
     std::vector<VkSemaphore> renderFinishedSemaphores; // スワップチェインへの書き込みが完了するのを待つためのセマフォ
     std::vector<VkFence> inFlightFences;               // あるフレームへのレンダリングが終わるのを待つためのフェンス
 
+    bool framebufferResized = false; // ウインドウサイズの変更等があったときにそれを知らせるために立てられるフラグ
+
     uint32_t currentFrame = 0; // 今使用しているフレームバッファのインデックス
 
     // -----関数の宣言-----
@@ -115,6 +117,7 @@ private:
     SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device); // 物理GPU deviceが対応しているスワップチェインの情報を取得する
 
     void createSwapChain();        // Vulkanのレンダリング結果をウインドウに表示するためのスワップチェインを作成
+    void recreateSwapChain();      // ウインドウサイズが変わったりしたときにスワップチェインを再作成する
     void createImageViews();       // スワップチェイン内の各画像にアクセスするためのビューを作成する
     void createRenderPass();       // フレームバッファーに含まれるバッファの種類や数などを定める
     void createGraphicsPipeline(); // グラフィックパイプラインを作成する
@@ -134,6 +137,14 @@ private:
     void drawFrame();
 
     void cleanup();
+    void cleanupSwapChain();
+
+    // GLFWがコールバックする際にどのインスタンスの関数を呼ぶべきかを
+    // 知ることが出来ないのでstatic関数として定義しておく
+    static void framebufferResizeCallback(
+        GLFWwindow *window,
+        int width,
+        int height); // ウインドウサイズの変更等が起こった時に呼ばれるコールバック
 
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,

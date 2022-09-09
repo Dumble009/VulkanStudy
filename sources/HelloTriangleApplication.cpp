@@ -236,11 +236,23 @@ void HelloTriangleApplication::initWindow()
     // GLFWはOpenGLでの使用を想定されてる作られているので、OpenGLのコンテキストを作成しないように指示を出す必要がある
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-    // リサイズできるウインドウは取り扱いが厄介なので、今はリサイズは出来ないように指定する
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    // リサイズを禁止したい場合は以下のフラグで出来ないように指定する
+    // glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     // 3つめのパラメータはウインドウのタイトル、4つめは表示するモニタの指定、5つめはOpenGLで使用されるもの
     window = glfwCreateWindow(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, "Vulkan", nullptr, nullptr);
+    glfwSetWindowUserPointer(window, this); // HelloTriangleApplicationのインスタンスにアクセスできるようにthisを埋め込んでおく
+    glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+}
+
+void HelloTriangleApplication::framebufferResizeCallback(
+    GLFWwindow *window,
+    int width,
+    int height)
+{
+    // windowに埋め込んだthisを取り出す
+    auto app = reinterpret_cast<HelloTriangleApplication *>(glfwGetWindowUserPointer(window));
+    app->framebufferResized = true;
 }
 
 void HelloTriangleApplication::pickPhysicalDevice()
@@ -511,6 +523,25 @@ void HelloTriangleApplication::createSwapChain()
 
     swapChainImageFormat = surfaceFormat.format;
     swapChainExtent = extent;
+}
+
+void HelloTriangleApplication::recreateSwapChain()
+{
+    int width = 0, height = 0;
+    glfwGetFramebufferSize(window, &width, &height);
+    while (width == 0 || height == 0)
+    {
+        // widthかheightが0になる→ウインドウが最小化されている
+        // ウインドウが最小化されている場合はループし続けることで一時停止させる
+        glfwGetFramebufferSize(window, &width, &height);
+        glfwWaitEvents();
+    }
+    vkDeviceWaitIdle(device); // レンダリング中のフレームバッファを操作したりしないようにアイドル状態になるまで待機する
+
+    createSwapChain();
+    // イメージバッファとフレームバッファのサイズ等はスワップチェインの設定に依存しているので作り直す
+    createImageViews();
+    createFramebuffers();
 }
 
 void HelloTriangleApplication::createImageViews()
@@ -1010,17 +1041,33 @@ void HelloTriangleApplication::drawFrame()
 {
     // フェンスを利用して前のフレームのレンダリングが完了するのを待つ
     vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
-    vkResetFences(device, 1, &inFlightFences[currentFrame]); // フェンスの状態を次の待機のためにリセットする
 
     // スワップチェインから画像を取得してくる。画像そのものが返ってくるわけではなく、次に利用可能なswapChainImagesの要素のインデックスが返ってくる
     uint32_t imageIndex;
-    vkAcquireNextImageKHR(
+    VkResult result = vkAcquireNextImageKHR(
         device,
         swapChain,
         UINT64_MAX,
         imageAvailableSemaphores[currentFrame], // 処理が終了したらこのセマフォを発火させる
         VK_NULL_HANDLE,                         // ここでフェンスを渡すこともできる。(今回は使わない)
         &imageIndex);
+
+    // OUTOF_DATA_KHR : ウインドウサイズが変わったりして既に作ったスワップチェインが使い物にならない
+    // SUBOPTIMAL_KHR : ダイナミックレンジ等のプロパティが変化した。
+    if (result == VK_ERROR_OUT_OF_DATE_KHR ||
+        result == VK_SUBOPTIMAL_KHR ||
+        framebufferResized)
+    {
+        framebufferResized = false;
+        recreateSwapChain();
+        return;
+    }
+    else if (result != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to acquire swap chain image!");
+    }
+
+    vkResetFences(device, 1, &inFlightFences[currentFrame]); // フェンスの状態を次の待機のためにリセットする
 
     // コマンドバッファにレンダリングのためのコマンドを記録していくために、まずは既存のコマンドをリセットする
     // 第二引数としてフラグを渡すことが出来るが、ここを0にしておくことで、全てデフォルトの動作をさせている
@@ -1071,6 +1118,7 @@ void HelloTriangleApplication::drawFrame()
 
 void HelloTriangleApplication::cleanup()
 {
+    cleanupSwapChain();
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
@@ -1078,20 +1126,9 @@ void HelloTriangleApplication::cleanup()
         vkDestroyFence(device, inFlightFences[i], nullptr);
     }
     vkDestroyCommandPool(device, commandPool, nullptr);
-    for (auto framebuffer : swapChainFramebuffers)
-    {
-        vkDestroyFramebuffer(device, framebuffer, nullptr);
-    }
     vkDestroyPipeline(device, graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     vkDestroyRenderPass(device, renderPass, nullptr);
-    for (auto imageView : swapChainImageViews)
-    {
-        vkDestroyImageView(device, imageView, nullptr);
-    }
-
-    // deviceよりも先にdeviceに依存する機能のクリーンアップを行う
-    vkDestroySwapchainKHR(device, swapChain, nullptr);
 
     // instanceよりも先にinstanceに依存する機能のクリーンアップを行う
     vkDestroyDevice(device, nullptr);
@@ -1107,6 +1144,21 @@ void HelloTriangleApplication::cleanup()
     glfwDestroyWindow(window);
     // GLFW自身が確保しているリソースを解放する
     glfwTerminate();
+}
+
+void HelloTriangleApplication::cleanupSwapChain()
+{
+    for (size_t i = 0; i < swapChainFramebuffers.size(); i++)
+    {
+        vkDestroyFramebuffer(device, swapChainFramebuffers[i], nullptr);
+    }
+
+    for (size_t i = 0; i < swapChainImageViews.size(); i++)
+    {
+        vkDestroyImageView(device, swapChainImageViews[i], nullptr);
+    }
+
+    vkDestroySwapchainKHR(device, swapChain, nullptr);
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL HelloTriangleApplication::debugCallback(
