@@ -16,6 +16,8 @@
 #include <GLFW/glfw3.h>
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h> // win32のAPIを使用してウインドウにアクセスするために必要
+// ----------Win32APIのinclude----------------
+#include "windows.h"
 
 // 各コマンドに対応するキューのIDをまとめて保持する構造体
 struct QueueFamilyIndices
@@ -59,7 +61,9 @@ private:
     VkQueue graphicsQueue; // グラフィック命令を受け付けるキューのハンドラ。論理デバイスが削除されたら自動的に消えるので明示的にcleanupする必要は無い
     VkQueue presentQueue;  // ウインドウへの表示命令を受け付けるキューのハンドラ。
 
-    GLFWwindow *window;                               // GLFWのウインドウハンドラ
+    GLFWwindow *window; // GLFWのウインドウハンドラ
+    HWND progman;       // プログラムマネージャのウインドウのハンドル
+    // static HWND handle_workerw;                       // 壁紙のウインドウのハンドル
     VkInstance instance;                              // Vulkanアプリケーションのインスタンス
     VkDebugUtilsMessengerEXT debugMessenger;          // validation layerへのコールバック関数の登録を行ってくれるオブジェクト
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE; // 物理GPUの情報が格納されるオブジェクト。instanceが破棄されると自動的に破棄される。
@@ -145,6 +149,8 @@ private:
         GLFWwindow *window,
         int width,
         int height); // ウインドウサイズの変更等が起こった時に呼ばれるコールバック
+
+    static BOOL CALLBACK enumProc(HWND hwnd, LPARAM lParam);
 
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,

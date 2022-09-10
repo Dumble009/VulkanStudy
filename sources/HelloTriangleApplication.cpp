@@ -1,4 +1,8 @@
 #include "HelloTriangleApplication.hpp"
+HWND handle_workerw;
+HDC dc_workerw;
+HDC dc_src;
+HBITMAP hBitmap;
 
 std::vector<char> HelloTriangleApplication::readFile(const std::string &filename)
 {
@@ -243,6 +247,30 @@ void HelloTriangleApplication::initWindow()
     window = glfwCreateWindow(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, "Vulkan", nullptr, nullptr);
     glfwSetWindowUserPointer(window, this); // HelloTriangleApplicationのインスタンスにアクセスできるようにthisを埋め込んでおく
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+
+    progman = FindWindow("Progman", nullptr);
+    PDWORD ptr;
+    SendMessageTimeout(progman, 0x52C, 0, 0, 0x0, 1000, (PDWORD_PTR)&ptr);
+    handle_workerw = 0;
+    EnumWindows(enumProc, 0);
+    dc_workerw = GetDCEx(handle_workerw, 0, 0x403);
+    RECT rect;
+    GetWindowRect(handle_workerw, &rect);
+    // 初期状態のデスクトップの様子を記録しておく
+    auto x = rect.right - rect.left;
+    auto y = rect.bottom - rect.top;
+    hBitmap = CreateCompatibleBitmap(dc_workerw, x, y);
+    dc_src = GetDC(glfwGetWin32Window(window));
+}
+
+BOOL CALLBACK HelloTriangleApplication::enumProc(HWND hwnd, LPARAM lParam)
+{
+    auto shell = FindWindowEx(hwnd, 0, "SHELLDLL_DefView", nullptr);
+    if (shell != nullptr)
+    {
+        handle_workerw = FindWindowEx(0, hwnd, "WorkerW", nullptr);
+    }
+    return true;
 }
 
 void HelloTriangleApplication::framebufferResizeCallback(
@@ -1030,6 +1058,8 @@ void HelloTriangleApplication::mainLoop()
         // 入力などのイベントを受け取るのに必要らしい
         glfwPollEvents();
         drawFrame();
+
+        BitBlt(dc_workerw, 0, 0, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, dc_src, 0, 0, 0x00CC0020);
     }
 
     // 裏でレンダリング等のプロセスが走っている時にcleanupが呼ばれると厄介なので、
@@ -1118,6 +1148,11 @@ void HelloTriangleApplication::drawFrame()
 
 void HelloTriangleApplication::cleanup()
 {
+    auto hDCBmp = CreateCompatibleDC(NULL);
+    SelectObject(hDCBmp, hBitmap);
+    BitBlt(dc_workerw, 0, 0, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, hDCBmp, 0, 0, SRCCOPY);
+    ReleaseDC(handle_workerw, dc_workerw);
+    DestroyWindow(handle_workerw);
     cleanupSwapChain();
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
