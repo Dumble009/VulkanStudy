@@ -1,9 +1,11 @@
 #include "HelloTriangleApplication.hpp"
+
 HWND handle_workerw;
 HDC dc_workerw;
 HDC dc_workerwCopy;
 HDC dc_src;
 HBITMAP hBitmap;
+std::vector<RECT> monitorRects;
 
 std::vector<char> HelloTriangleApplication::readFile(const std::string &filename)
 {
@@ -254,6 +256,7 @@ void HelloTriangleApplication::initWindow()
     SendMessageTimeout(progman, 0x052C, 0, 0, 0x0, 1000, (PDWORD_PTR)&ptr);
     handle_workerw = 0;
     EnumWindows(enumProc, 0);
+    EnumDisplayMonitors(NULL, NULL, monitorEnumProc, 0);
     dc_workerw = GetDCEx(handle_workerw, 0, 0x403);
     RECT rect;
     GetWindowRect(handle_workerw, &rect);
@@ -265,6 +268,8 @@ void HelloTriangleApplication::initWindow()
     SelectObject(dc_workerwCopy, hBitmap);
     BitBlt(dc_workerwCopy, 0, 0, x, y, dc_workerw, 0, 0, 0x00CC0020);
     dc_src = GetDC(glfwGetWin32Window(window));
+
+    // モニターの情報を取得して、全てのモニタのデスクトップをオーバライドできるようにする
 }
 
 BOOL CALLBACK HelloTriangleApplication::enumProc(HWND hwnd, LPARAM lParam)
@@ -272,9 +277,18 @@ BOOL CALLBACK HelloTriangleApplication::enumProc(HWND hwnd, LPARAM lParam)
     auto shell = FindWindowEx(hwnd, 0, "SHELLDLL_DefView", nullptr);
     if (shell != nullptr)
     {
-        printf("enum called\n");
         handle_workerw = FindWindowEx(0, hwnd, "WorkerW", nullptr);
     }
+    return true;
+}
+
+BOOL CALLBACK HelloTriangleApplication::monitorEnumProc(
+    HMONITOR monitor,
+    HDC hdc,
+    LPRECT rect,
+    LPARAM param)
+{
+    monitorRects.push_back(*rect);
     return true;
 }
 
@@ -1055,6 +1069,25 @@ VkExtent2D HelloTriangleApplication::chooseSwapExtent(const VkSurfaceCapabilitie
     }
 }
 
+void HelloTriangleApplication::calcMonitorOffset()
+{
+    // 全モニタの左上の座標を計算する。
+    // メインモニタの左上が(0, 0)であることから、
+    // offsetが0より大きくなることは無いので、まずは0で初期化する
+    monitorLeftOffset = 0, monitorTopOffset = 0;
+    for (auto rect : monitorRects)
+    {
+        if (rect.left < monitorLeftOffset)
+        {
+            monitorLeftOffset = rect.left;
+        }
+        if (rect.top < monitorTopOffset)
+        {
+            monitorTopOffset = rect.top;
+        }
+    }
+}
+
 void HelloTriangleApplication::mainLoop()
 {
     // ウインドウが閉じられるまでwhileループを回す
@@ -1064,7 +1097,12 @@ void HelloTriangleApplication::mainLoop()
         glfwPollEvents();
         drawFrame();
 
-        BitBlt(dc_workerw, 0, 0, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, dc_src, 0, 0, 0x00CC0020);
+        calcMonitorOffset();
+
+        for (auto rect : monitorRects)
+        {
+            BitBlt(dc_workerw, rect.left - monitorLeftOffset, rect.top - monitorTopOffset, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, dc_src, 0, 0, 0x00CC0020);
+        }
     }
 
     // 裏でレンダリング等のプロセスが走っている時にcleanupが呼ばれると厄介なので、
@@ -1153,24 +1191,20 @@ void HelloTriangleApplication::drawFrame()
 
 void HelloTriangleApplication::cleanup()
 {
-    auto hDCBmp = CreateCompatibleDC(NULL);
-    SelectObject(hDCBmp, hBitmap);
-    if (!BitBlt(
-            dc_workerw,
-            0, 0,
-            DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT,
-            dc_workerwCopy, 0, 0, SRCCOPY))
+    calcMonitorOffset();
+
+    for (auto rect : monitorRects)
     {
-        char buffer[256];
-        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), buffer, 256, 0);
-        printf("BitBlt failed %s\n", buffer);
-    }
-    ReleaseDC(handle_workerw, dc_workerw);
-    if (!DestroyWindow(handle_workerw))
-    {
-        char buffer[256];
-        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), buffer, 256, 0);
-        printf("destroy failed %s\n", buffer);
+        if (!BitBlt(
+                dc_workerw,
+                rect.left - monitorLeftOffset, rect.top - monitorTopOffset,
+                DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT,
+                dc_workerwCopy, 0, 0, SRCCOPY))
+        {
+            char buffer[256];
+            FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), buffer, 256, 0);
+            printf("BitBlt failed %s\n", buffer);
+        }
     }
     cleanupSwapChain();
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)

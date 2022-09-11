@@ -87,6 +87,9 @@ private:
 
     uint32_t currentFrame = 0; // 今使用しているフレームバッファのインデックス
 
+    int monitorLeftOffset = 0; // 全モニタの左上の座標を(0, 0)にするためのオフセット
+    int monitorTopOffset = 0;  // 全モニタの左上の座標を(0, 0)にするためのオフセット
+
     // -----関数の宣言-----
     static std::vector<char> readFile(const std::string &filename); // filenameのパスの指すファイルを読み込んでバイトコードのvectorとして返す
 
@@ -135,6 +138,8 @@ private:
     VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);  // スワップチェインへの画像の渡し方の中で最適な物を選んで返す
     VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);                           // スワップチェインへ渡す画像の解像度を決定して返す
 
+    void calcMonitorOffset(); // 全モニタが構成する矩形領域の左上の座標を計算する
+
     void mainLoop();
     void drawFrame();
 
@@ -149,6 +154,11 @@ private:
         int height); // ウインドウサイズの変更等が起こった時に呼ばれるコールバック
 
     static BOOL CALLBACK enumProc(HWND hwnd, LPARAM lParam);
+    static BOOL CALLBACK monitorEnumProc(
+        HMONITOR monitor,
+        HDC hdc,
+        LPRECT rect,
+        LPARAM param);
 
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
