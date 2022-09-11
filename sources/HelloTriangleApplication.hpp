@@ -61,9 +61,7 @@ private:
     VkQueue graphicsQueue; // グラフィック命令を受け付けるキューのハンドラ。論理デバイスが削除されたら自動的に消えるので明示的にcleanupする必要は無い
     VkQueue presentQueue;  // ウインドウへの表示命令を受け付けるキューのハンドラ。
 
-    GLFWwindow *window; // GLFWのウインドウハンドラ
-    HWND progman;       // プログラムマネージャのウインドウのハンドル
-    // static HWND handle_workerw;                       // 壁紙のウインドウのハンドル
+    GLFWwindow *window;                               // GLFWのウインドウハンドラ
     VkInstance instance;                              // Vulkanアプリケーションのインスタンス
     VkDebugUtilsMessengerEXT debugMessenger;          // validation layerへのコールバック関数の登録を行ってくれるオブジェクト
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE; // 物理GPUの情報が格納されるオブジェクト。instanceが破棄されると自動的に破棄される。

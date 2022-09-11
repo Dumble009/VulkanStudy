@@ -1,6 +1,7 @@
 #include "HelloTriangleApplication.hpp"
 HWND handle_workerw;
 HDC dc_workerw;
+HDC dc_workerwCopy;
 HDC dc_src;
 HBITMAP hBitmap;
 
@@ -248,9 +249,9 @@ void HelloTriangleApplication::initWindow()
     glfwSetWindowUserPointer(window, this); // HelloTriangleApplicationのインスタンスにアクセスできるようにthisを埋め込んでおく
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 
-    progman = FindWindow("Progman", nullptr);
+    auto progman = FindWindow("Progman", nullptr);
     PDWORD ptr;
-    SendMessageTimeout(progman, 0x52C, 0, 0, 0x0, 1000, (PDWORD_PTR)&ptr);
+    SendMessageTimeout(progman, 0x052C, 0, 0, 0x0, 1000, (PDWORD_PTR)&ptr);
     handle_workerw = 0;
     EnumWindows(enumProc, 0);
     dc_workerw = GetDCEx(handle_workerw, 0, 0x403);
@@ -260,6 +261,8 @@ void HelloTriangleApplication::initWindow()
     auto x = rect.right - rect.left;
     auto y = rect.bottom - rect.top;
     hBitmap = CreateCompatibleBitmap(dc_workerw, x, y);
+    dc_workerwCopy = CreateCompatibleDC(dc_workerw);
+    BitBlt(dc_workerwCopy, 0, 0, x, y, dc_workerw, 0, 0, 0x00CC0020);
     dc_src = GetDC(glfwGetWin32Window(window));
 }
 
@@ -268,6 +271,7 @@ BOOL CALLBACK HelloTriangleApplication::enumProc(HWND hwnd, LPARAM lParam)
     auto shell = FindWindowEx(hwnd, 0, "SHELLDLL_DefView", nullptr);
     if (shell != nullptr)
     {
+        printf("enum called\n");
         handle_workerw = FindWindowEx(0, hwnd, "WorkerW", nullptr);
     }
     return true;
@@ -1150,9 +1154,14 @@ void HelloTriangleApplication::cleanup()
 {
     auto hDCBmp = CreateCompatibleDC(NULL);
     SelectObject(hDCBmp, hBitmap);
-    BitBlt(dc_workerw, 0, 0, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, hDCBmp, 0, 0, SRCCOPY);
+    BitBlt(dc_workerw, 0, 0, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, dc_workerwCopy, 0, 0, SRCCOPY);
     ReleaseDC(handle_workerw, dc_workerw);
-    DestroyWindow(handle_workerw);
+    if (!DestroyWindow(handle_workerw))
+    {
+        char buffer[256];
+        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), buffer, 256, 0);
+        printf("destroy failed %s\n", buffer);
+    }
     cleanupSwapChain();
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
