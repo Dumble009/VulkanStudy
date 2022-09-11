@@ -260,8 +260,9 @@ void HelloTriangleApplication::initWindow()
     // 初期状態のデスクトップの様子を記録しておく
     auto x = rect.right - rect.left;
     auto y = rect.bottom - rect.top;
-    hBitmap = CreateCompatibleBitmap(dc_workerw, x, y);
     dc_workerwCopy = CreateCompatibleDC(dc_workerw);
+    hBitmap = CreateCompatibleBitmap(dc_workerw, x, y);
+    SelectObject(dc_workerwCopy, hBitmap);
     BitBlt(dc_workerwCopy, 0, 0, x, y, dc_workerw, 0, 0, 0x00CC0020);
     dc_src = GetDC(glfwGetWin32Window(window));
 }
@@ -1154,7 +1155,16 @@ void HelloTriangleApplication::cleanup()
 {
     auto hDCBmp = CreateCompatibleDC(NULL);
     SelectObject(hDCBmp, hBitmap);
-    BitBlt(dc_workerw, 0, 0, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, dc_workerwCopy, 0, 0, SRCCOPY);
+    if (!BitBlt(
+            dc_workerw,
+            0, 0,
+            DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT,
+            dc_workerwCopy, 0, 0, SRCCOPY))
+    {
+        char buffer[256];
+        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), buffer, 256, 0);
+        printf("BitBlt failed %s\n", buffer);
+    }
     ReleaseDC(handle_workerw, dc_workerw);
     if (!DestroyWindow(handle_workerw))
     {
