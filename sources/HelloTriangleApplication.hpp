@@ -1,8 +1,9 @@
 #pragma once
 // ----------STLのinclude----------
 #include <stdexcept> // 例外を投げるために必要
-#include <vector>    // レイヤーのリストを取り扱うために必要
-#include <cstring>   // レイヤー文字列の比較に必要
+#include <vector>
+#include <array>
+#include <cstring>
 #include <iostream>  // デバッグメッセージを表示するのに使用
 #include <optional>  // QueueFamilyIndicesの値が未定義であるかどうかをチェック出来るようにするために必要
 #include <set>       // 今回のアプリケーションで使用するキューのIDの集合を取り扱うために必要
@@ -45,6 +46,38 @@ struct Vertex
 {
     glm::vec2 pos;
     glm::vec3 color;
+
+    static VkVertexInputBindingDescription getBindingDescription()
+    {
+        // CPU上の頂点情報をGPUに渡す際に、情報一つ当たりのデータサイズを決定する
+        VkVertexInputBindingDescription bindingDescription{};
+
+        bindingDescription.binding = 0;                             // 今から作ろうとしているバインディングのインデックス
+        bindingDescription.stride = sizeof(Vertex);                 // 一つの頂点データのサイズ
+        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX; // 各データが頂点ごとかインスタンス毎か。インスタンスレンダリングとかでは別の値にするらしい
+
+        return bindingDescription;
+    }
+
+    struct std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions()
+    {
+        // CPU上の頂点情報をGPUに渡し際の渡し方を決定する
+        std::array<VkVertexInputAttributeDescription, 2> attributeDescription{};
+
+        // 頂点座標のバインディングの設定
+        attributeDescription[0].binding = 0;                      // どのインデックスのバインディングと紐づくか
+        attributeDescription[0].location = 0;                     // vertexシェーダの何番目のinputと紐づくか
+        attributeDescription[0].format = VK_FORMAT_R32G32_SFLOAT; // データのフォーマット、32ビットのfloatデータが2つ
+        attributeDescription[0].offset = offsetof(Vertex, pos);   // 構造体の先頭アドレスから頂点座標が入っているアドレスのオフセット
+
+        // 頂点色のバインディングの設定
+        attributeDescription[1].binding = 0;
+        attributeDescription[1].location = 1;
+        attributeDescription[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescription[1].offset = offsetof(Vertex, color);
+
+        return attributeDescription;
+    }
 };
 
 class HelloTriangleApplication
