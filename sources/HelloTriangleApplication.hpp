@@ -16,6 +16,7 @@
 #include <GLFW/glfw3.h>
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h> // win32のAPIを使用してウインドウにアクセスするために必要
+#include <glm/glm.hpp>
 // ----------Win32APIのinclude----------------
 #include "windows.h"
 
@@ -40,6 +41,12 @@ struct SwapChainSupportDetails
     std::vector<VkPresentModeKHR> presentModes; // ウインドウサーフェースが対応している表示モード
 };
 
+struct Vertex
+{
+    glm::vec2 pos;
+    glm::vec3 color;
+};
+
 class HelloTriangleApplication
 {
 public:
@@ -53,6 +60,12 @@ private:
 
     const std::vector<const char *> validationLayers = {"VK_LAYER_KHRONOS_validation"};   // 使用するvalidation layerの種類を指定
     const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME}; // 物理GPUが対応していてほしい拡張機能の名称のリスト
+
+    const std::vector<Vertex> vertices = {
+        {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+        {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+        {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+    };
 #ifdef NDEBUG
     const bool enableValidationLayers = false;
 #else
