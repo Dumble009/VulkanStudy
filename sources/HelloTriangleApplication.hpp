@@ -59,7 +59,7 @@ struct Vertex
         return bindingDescription;
     }
 
-    struct std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions()
+    static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions()
     {
         // CPU上の頂点情報をGPUに渡し際の渡し方を決定する
         std::array<VkVertexInputAttributeDescription, 2> attributeDescription{};

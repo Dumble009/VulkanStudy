@@ -720,6 +720,14 @@ void HelloTriangleApplication::createGraphicsPipeline()
     vertexInputInfo.vertexAttributeDescriptionCount = 0;
     vertexInputInfo.pVertexAttributeDescriptions = nullptr;
 
+    auto bindingDescription = Vertex::getBindingDescription();
+    auto attributeDescriptions = Vertex::getAttributeDescriptions();
+
+    vertexInputInfo.vertexBindingDescriptionCount = 1;
+    vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
     // 頂点データがどのような図形を表しているのかを定義する。
     // ここでは、3つの頂点ごとにそれらを結んだ三角形を表すように指定している
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
