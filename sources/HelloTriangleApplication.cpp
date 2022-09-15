@@ -49,6 +49,7 @@ void HelloTriangleApplication::initVulkan()
     createGraphicsPipeline();
     createFramebuffers();
     createCommandPool();
+    createVertexBuffer();
     createCommandBuffers();
     createSyncObjects();
 }
@@ -915,6 +916,51 @@ void HelloTriangleApplication::createCommandPool()
     }
 }
 
+void HelloTriangleApplication::createVertexBuffer()
+{
+    VkBufferCreateInfo bufferInfo{};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = sizeof(vertices[0]) * vertices.size(); // バッファ全体のサイズ
+    bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;    // バッファをどう使用するか。ここでは頂点データを保存するために使用することを示している
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;      // バッファをキューの間で共有できるかどうか。グラフィックキューでしか使用しないので排他的に使用するよう指示している
+
+    if (vkCreateBuffer(device, &bufferInfo, nullptr, &vertexBuffer) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create vertex buffer!");
+    }
+
+    // vertexBufferに割り付けるべきメモリのサイズや種類を取得する
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(device, vertexBuffer, &memRequirements);
+
+    // 頂点バッファに実際に割り付けるメモリのサイズや機能を指定する
+    // メモリの機能にはCPU側から見ることが出来て、ホスト側でそのメモリをマッピングした即座に内容が同期される事を指定している
+    VkMemoryAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex =
+        findMemoryType(
+            memRequirements.memoryTypeBits,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    // メモリの確保
+    if (vkAllocateMemory(device, &allocInfo, nullptr, &vertexBufferMemory) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to allocate vertex buffer memory");
+    }
+
+    // vertexBufferに確保したメモリを割り付ける
+    vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
+
+    void *data;
+    // VRAMをRAMにマッピングする
+    vkMapMemory(device, vertexBufferMemory, 0, bufferInfo.size, 0, &data);
+    // マップした領域に頂点情報を流し込む
+    memcpy(data, vertices.data(), (size_t)bufferInfo.size);
+    // マッピングを解除する
+    vkUnmapMemory(device, vertexBufferMemory);
+}
+
 void HelloTriangleApplication::createCommandBuffers()
 {
     commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
@@ -1004,13 +1050,21 @@ void HelloTriangleApplication::recordCommandBuffer(VkCommandBuffer commandBuffer
     scissor.extent = swapChainExtent;
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+    // 頂点バッファのバインディング
+    VkBuffer vertexBuffers[] = {vertexBuffer};
+    VkDeviceSize offsets[] = {0}; // 何バイト目から頂点情報を読むか
+    // 0番目から1つのバインド情報でvertexBuffersをバインドする
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+
     // 描画コマンド
     // 第二引数以降の意味は
-    // vertexCount : 今回は三角形を表示するので3
+    // vertexCount : 頂点データの要素数を流し込む
     // instanceCount : 今回はインスタンス度レンダリングを行わないので1を指定する
     // firstVertex : 何番目の頂点からレンダリングを始めるか
     // firstInstance : 何番目のインスタンスからレンダリングを始めるか
-    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+    vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
 
     // レンダーパスを操作するのを終了する
     vkCmdEndRenderPass(commandBuffer);
@@ -1019,6 +1073,24 @@ void HelloTriangleApplication::recordCommandBuffer(VkCommandBuffer commandBuffer
     {
         throw std::runtime_error("failed to record command buffer!");
     }
+}
+
+uint32_t HelloTriangleApplication::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
+{
+    // VRAMが対応しているメモリの種類を取得する
+    VkPhysicalDeviceMemoryProperties memProperties;
+    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+    for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+    {
+        if ((typeFilter & (1 << i)) &&
+            (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+        {
+            return i;
+        }
+    }
+
+    throw std::runtime_error("failed to find suitable memory type!");
 }
 
 VkSurfaceFormatKHR HelloTriangleApplication::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats)
@@ -1215,6 +1287,10 @@ void HelloTriangleApplication::cleanup()
         }
     }
     cleanupSwapChain();
+
+    vkDestroyBuffer(device, vertexBuffer, nullptr);
+    vkFreeMemory(device, vertexBufferMemory, nullptr);
+
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);

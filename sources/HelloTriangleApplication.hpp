@@ -124,6 +124,8 @@ private:
     VkPipeline graphicsPipeline;
     VkCommandPool commandPool;                   // レンダリングなどのVulkanへのコマンドをキューに流し込むオブジェクト
     std::vector<VkCommandBuffer> commandBuffers; // コマンドプールの記憶実体(?)
+    VkBuffer vertexBuffer;                       // 頂点データを格納するバッファ
+    VkDeviceMemory vertexBufferMemory;           // 頂点データを格納するバッファのメモリ実体
 
     std::vector<VkSemaphore> imageAvailableSemaphores; // スワップチェインから書き込み先の画像を取得してくるのを待つためのセマフォ
     std::vector<VkSemaphore> renderFinishedSemaphores; // スワップチェインへの書き込みが完了するのを待つためのセマフォ
@@ -174,10 +176,13 @@ private:
     void createGraphicsPipeline(); // グラフィックパイプラインを作成する
     void createFramebuffers();     // フレームバッファを作成する
     void createCommandPool();      // コマンドプールを作成する
+    void createVertexBuffer();     // 頂点データを保存しておくためのバッファを作成する
     void createCommandBuffers();   // コマンドバッファを作成する
     void createSyncObjects();      // セマフォやフェンスなど同期するためのオブジェクトを作成する
 
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex); // コマンドバッファにコマンドを記録する
+
+    uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties); // VRAMが対応しているメモリの種類と用途が必要とするメモリの機能を比較して最適なメモリの種類を選んで返す
 
     VkShaderModule createShaderModule(const std::vector<char> &code);                                    // shaderのバイトコードからシェーダーモジュールを作成する
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats); // スワップチェインが対応している画像フォーマットの中から最適なものを選んで返す
