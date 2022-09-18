@@ -918,11 +918,33 @@ void HelloTriangleApplication::createCommandPool()
 
 void HelloTriangleApplication::createVertexBuffer()
 {
+    VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+    createBuffer(bufferSize,
+                 VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                 vertexBuffer,
+                 vertexBufferMemory);
+    void *data;
+    // VRAMをRAMにマッピングする
+    vkMapMemory(device, vertexBufferMemory, 0, bufferSize, 0, &data);
+    // マップした領域に頂点情報を流し込む
+    memcpy(data, vertices.data(), (size_t)bufferSize);
+    // マッピングを解除する
+    vkUnmapMemory(device, vertexBufferMemory);
+}
+
+void HelloTriangleApplication::createBuffer(
+    VkDeviceSize size,
+    VkBufferUsageFlags usage,
+    VkMemoryPropertyFlags properties,
+    VkBuffer &buffer,
+    VkDeviceMemory &bufferMemory)
+{
     VkBufferCreateInfo bufferInfo{};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferInfo.size = sizeof(vertices[0]) * vertices.size(); // バッファ全体のサイズ
-    bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;    // バッファをどう使用するか。ここでは頂点データを保存するために使用することを示している
-    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;      // バッファをキューの間で共有できるかどうか。グラフィックキューでしか使用しないので排他的に使用するよう指示している
+    bufferInfo.size = size;                             // バッファ全体のサイズ
+    bufferInfo.usage = usage;                           // バッファをどう使用するか。ここでは頂点データを保存するために使用することを示している
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; // バッファをキューの間で共有できるかどうか。グラフィックキューでしか使用しないので排他的に使用するよう指示している
 
     if (vkCreateBuffer(device, &bufferInfo, nullptr, &vertexBuffer) != VK_SUCCESS)
     {
@@ -931,34 +953,23 @@ void HelloTriangleApplication::createVertexBuffer()
 
     // vertexBufferに割り付けるべきメモリのサイズや種類を取得する
     VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(device, vertexBuffer, &memRequirements);
+    vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
 
     // 頂点バッファに実際に割り付けるメモリのサイズや機能を指定する
     // メモリの機能にはCPU側から見ることが出来て、ホスト側でそのメモリをマッピングした即座に内容が同期される事を指定している
     VkMemoryAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = memRequirements.size;
-    allocInfo.memoryTypeIndex =
-        findMemoryType(
-            memRequirements.memoryTypeBits,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
 
     // メモリの確保
-    if (vkAllocateMemory(device, &allocInfo, nullptr, &vertexBufferMemory) != VK_SUCCESS)
+    if (vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to allocate vertex buffer memory");
     }
 
     // vertexBufferに確保したメモリを割り付ける
-    vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
-
-    void *data;
-    // VRAMをRAMにマッピングする
-    vkMapMemory(device, vertexBufferMemory, 0, bufferInfo.size, 0, &data);
-    // マップした領域に頂点情報を流し込む
-    memcpy(data, vertices.data(), (size_t)bufferInfo.size);
-    // マッピングを解除する
-    vkUnmapMemory(device, vertexBufferMemory);
+    vkBindBufferMemory(device, buffer, bufferMemory, 0);
 }
 
 void HelloTriangleApplication::createCommandBuffers()
