@@ -919,18 +919,35 @@ void HelloTriangleApplication::createCommandPool()
 void HelloTriangleApplication::createVertexBuffer()
 {
     VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+
+    // CPUからGPUへデータを転送するための一次バッファであるステージングバッファを作成する
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
     createBuffer(bufferSize,
-                 VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                 VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                 vertexBuffer,
-                 vertexBufferMemory);
+                 stagingBuffer,
+                 stagingBufferMemory);
     void *data;
     // VRAMをRAMにマッピングする
-    vkMapMemory(device, vertexBufferMemory, 0, bufferSize, 0, &data);
+    vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
     // マップした領域に頂点情報を流し込む
     memcpy(data, vertices.data(), (size_t)bufferSize);
     // マッピングを解除する
-    vkUnmapMemory(device, vertexBufferMemory);
+    vkUnmapMemory(device, stagingBufferMemory);
+
+    // 実際にGPUがレンダリング用に使用する頂点バッファを作成する
+    createBuffer(
+        bufferSize,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, // ステージングバッファから転送する先として使用でき、かつ頂点バッファとして使用できるよう指定しておく
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        vertexBuffer,
+        vertexBufferMemory);
+
+    copyBuffer(stagingBuffer, vertexBuffer, bufferSize); // 一次バッファから頂点バッファに頂点データを移す
+
+    vkDestroyBuffer(device, stagingBuffer, nullptr);
+    vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
 void HelloTriangleApplication::createBuffer(
@@ -946,7 +963,7 @@ void HelloTriangleApplication::createBuffer(
     bufferInfo.usage = usage;                           // バッファをどう使用するか。ここでは頂点データを保存するために使用することを示している
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; // バッファをキューの間で共有できるかどうか。グラフィックキューでしか使用しないので排他的に使用するよう指示している
 
-    if (vkCreateBuffer(device, &bufferInfo, nullptr, &vertexBuffer) != VK_SUCCESS)
+    if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to create vertex buffer!");
     }
@@ -970,6 +987,44 @@ void HelloTriangleApplication::createBuffer(
 
     // vertexBufferに確保したメモリを割り付ける
     vkBindBufferMemory(device, buffer, bufferMemory, 0);
+}
+
+void HelloTriangleApplication::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
+{
+    // コピーのためのコマンドをコマンドバッファに記録する
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandPool = commandPool;
+    allocInfo.commandBufferCount = 1;
+
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT; // 使い捨てのコマンドバッファであることを指定している
+
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+    VkBufferCopy copyRegion{}; // バッファ間でコピーを行う範囲を指定する
+    copyRegion.srcOffset = 0;
+    copyRegion.dstOffset = 0;
+    copyRegion.size = size;
+    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion); // srcBufferからdstBufferに内容をコピーする
+
+    vkEndCommandBuffer(commandBuffer);
+
+    // 今記録した転送処理を実行する
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+
+    vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(graphicsQueue); // 転送処理が完了するまで待つ
+
+    vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 }
 
 void HelloTriangleApplication::createCommandBuffers()

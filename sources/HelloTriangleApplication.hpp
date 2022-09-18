@@ -176,15 +176,16 @@ private:
     void createGraphicsPipeline(); // グラフィックパイプラインを作成する
     void createFramebuffers();     // フレームバッファを作成する
     void createCommandPool();      // コマンドプールを作成する
-    void createVertexBuffer();     // 頂点データを保存しておくためのバッファを作成する
+    void createVertexBuffer();     // 頂点データを保存しておくためのバッファと、CPUからGPUにデータを転送するための一次バッファを作成する
     void createBuffer(
         VkDeviceSize size,
         VkBufferUsageFlags usage,
         VkMemoryPropertyFlags properties,
         VkBuffer &buffer,
-        VkDeviceMemory &bufferMemory); // VkBufferとVkDeviceMemoryの作成処理をまとめたヘルパ関数
-    void createCommandBuffers();       // コマンドバッファを作成する
-    void createSyncObjects();          // セマフォやフェンスなど同期するためのオブジェクトを作成する
+        VkDeviceMemory &bufferMemory);                                          // VkBufferとVkDeviceMemoryの作成処理をまとめたヘルパ関数
+    void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size); // 頂点データを一次バッファからGPUが管理する頂点バッファにコピーする
+    void createCommandBuffers();                                                // コマンドバッファを作成する
+    void createSyncObjects();                                                   // セマフォやフェンスなど同期するためのオブジェクトを作成する
 
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex); // コマンドバッファにコマンドを記録する
 
