@@ -11,13 +11,19 @@
 #include <limits>    // numeric_limitsを使用するために必要
 #include <algorithm> // clampを使用するために必要
 #include <fstream>   // シェーダーコードを読み込むために必要
+#include <chrono>    // 時間に関する処理を扱うために必要
+
 // ----------GLFW(Vulkan込み)のinclude-----------
 #define VK_USE_PLATFORM_WIN32_KHR // win32のAPIを使用してウインドウにアクセスするために必要
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h> // win32のAPIを使用してウインドウにアクセスするために必要
+
+// ----------GLMのinclude----------
+#define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 // ----------Win32APIのinclude----------------
 #include "windows.h"
 
@@ -219,6 +225,7 @@ private:
 
     void mainLoop();
     void drawFrame();
+    void updateUniformBuffer(uint32_t currentImage); // MVP行列をアップデートする。引数はスワップチェーン上の現在使用している画像の番号
 
     void cleanup();
     void cleanupSwapChain();
