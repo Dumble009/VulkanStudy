@@ -52,6 +52,7 @@ void HelloTriangleApplication::initVulkan()
     createCommandPool();
     createVertexBuffer();
     createIndexBuffer();
+    createUnifomBuffers();
     createCommandBuffers();
     createSyncObjects();
 }
@@ -965,6 +966,10 @@ void HelloTriangleApplication::createVertexBuffer()
         vertexBuffer,
         vertexBufferMemory);
 
+    // GPUとCPUが両方アクセスできるメモリ領域よりもGPUのみが専有的にアクセスできるメモリ領域の方がGPUからのアクセス効率がいい
+    // 今回は実行途中で頂点情報がアップデートされることは無いので、わざわざ一次バッファを用意してGPUのみがアクセス可能な頂点バッファにデータをコピーした方が
+    // 読み込みが速いので効率が良くなる
+    // もしも頂点情報が実行中に変化するのであれば、毎回バッファ間のコピーを行うと無駄なので、CPUとGPUがアクセスできる領域をそのまま頂点バッファにした方がいい
     copyBuffer(stagingBuffer, vertexBuffer, bufferSize); // 一次バッファから頂点バッファに頂点データを移す
 
     vkDestroyBuffer(device, stagingBuffer, nullptr);
@@ -1079,6 +1084,26 @@ void HelloTriangleApplication::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer
     vkQueueWaitIdle(graphicsQueue); // 転送処理が完了するまで待つ
 
     vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+}
+
+void HelloTriangleApplication::createUnifomBuffers()
+{
+    VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+
+    // フレーム数分のバッファを用意する
+    uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+    uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        createBuffer(bufferSize,
+                     VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                     uniformBuffers[i],
+                     uniformBuffersMemory[i]);
+    }
+
+    // MVP行列の情報は毎フレーム変化するため、ここではMapMemory等を使用して書き込むことはしない
 }
 
 void HelloTriangleApplication::createCommandBuffers()
@@ -1417,6 +1442,12 @@ void HelloTriangleApplication::cleanup()
         }
     }
     cleanupSwapChain();
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        vkDestroyBuffer(device, uniformBuffers[i], nullptr);
+        vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
+    }
 
     vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 

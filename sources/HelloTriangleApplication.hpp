@@ -140,6 +140,9 @@ private:
     VkBuffer indexBuffer;                        // 各ポリゴンがどの頂点を使用するかをまとめたデータのためのバッファ
     VkDeviceMemory indexBufferMemory;            // インデックスバッファのメモリ実体
 
+    std::vector<VkBuffer> uniformBuffers;             // MVP行列を書き込むためのバッファ。フレーム数分用意するので配列にしている
+    std::vector<VkDeviceMemory> uniformBuffersMemory; // uniformBuffersが使用するメモリ実体
+
     std::vector<VkSemaphore> imageAvailableSemaphores; // スワップチェインから書き込み先の画像を取得してくるのを待つためのセマフォ
     std::vector<VkSemaphore> renderFinishedSemaphores; // スワップチェインへの書き込みが完了するのを待つためのセマフォ
     std::vector<VkFence> inFlightFences;               // あるフレームへのレンダリングが終わるのを待つためのフェンス
@@ -192,6 +195,7 @@ private:
     void createCommandPool();         // コマンドプールを作成する
     void createVertexBuffer();        // 頂点データを保存しておくためのバッファを作成し、CPUからGPUにデータを転送する
     void createIndexBuffer();         // インデックスバッファを作成し、CPUからGPUにデータを転送する
+    void createUnifomBuffers();       // シェーダに渡すMVP行列を書き込むためのバッファを作成する
     void createBuffer(
         VkDeviceSize size,
         VkBufferUsageFlags usage,
