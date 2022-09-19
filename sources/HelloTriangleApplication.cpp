@@ -53,6 +53,8 @@ void HelloTriangleApplication::initVulkan()
     createVertexBuffer();
     createIndexBuffer();
     createUnifomBuffers();
+    createDescriptorPool();
+    createDescriptorSets();
     createCommandBuffers();
     createSyncObjects();
 }
@@ -790,13 +792,13 @@ void HelloTriangleApplication::createGraphicsPipeline()
     // ラスタライザは三角形などの図形をピクセル単位に分割し、フラグメントシェーダーを適用する
     VkPipelineRasterizationStateCreateInfo rasterizer{};
     rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rasterizer.depthClampEnable = VK_FALSE;         // ニアプレーンとファープレーンの範囲の外にあるポリゴンを内部に収めるか
-    rasterizer.rasterizerDiscardEnable = VK_FALSE;  // これがtrueだとラスタライザはポリゴンを無視する
-    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;  // ポリゴンをどう描画するか。ここでは三角形として中身を埋めるように指定している
-    rasterizer.lineWidth = 1.0f;                    // 線を描画する際の太さ
-    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;    // カリングの設定。ここではバックカリングすることを指定している
-    rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE; // 何をもって正面を向いているとするかの指定。頂点が時計回りに並んでいたら正面としている
-    rasterizer.depthBiasEnable = VK_FALSE;          // 深度値にバイアスを加えるかの設定。ここでは無効としている
+    rasterizer.depthClampEnable = VK_FALSE;                 // ニアプレーンとファープレーンの範囲の外にあるポリゴンを内部に収めるか
+    rasterizer.rasterizerDiscardEnable = VK_FALSE;          // これがtrueだとラスタライザはポリゴンを無視する
+    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;          // ポリゴンをどう描画するか。ここでは三角形として中身を埋めるように指定している
+    rasterizer.lineWidth = 1.0f;                            // 線を描画する際の太さ
+    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;            // カリングの設定。ここではバックカリングすることを指定している
+    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; // 何をもって正面を向いているとするかの指定。頂点が時計回りに並んでいたら正面としている。ただし、プロジェクション行列のY軸を反転しているため、正しく反時計回りを正面とするためには時計回りを正面と設定する必要がある
+    rasterizer.depthBiasEnable = VK_FALSE;                  // 深度値にバイアスを加えるかの設定。ここでは無効としている
     rasterizer.depthBiasConstantFactor = 0.0f;
     rasterizer.depthBiasClamp = 0.0f;
     rasterizer.depthBiasSlopeFactor = 0.0f;
@@ -1106,6 +1108,67 @@ void HelloTriangleApplication::createUnifomBuffers()
     // MVP行列の情報は毎フレーム変化するため、ここではMapMemory等を使用して書き込むことはしない
 }
 
+void HelloTriangleApplication::createDescriptorPool()
+{
+    VkDescriptorPoolSize poolSize{};
+    poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    VkDescriptorPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = 1;
+    poolInfo.pPoolSizes = &poolSize;
+    poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create descriptor pool!");
+    }
+}
+
+void HelloTriangleApplication::createDescriptorSets()
+{
+    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = descriptorPool;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    allocInfo.pSetLayouts = layouts.data();
+
+    descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+    if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to allocate descriptor sets!");
+    }
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        // MVP行列を保存してあるバッファ群の各フレームに対応するバッファと、同じフレームに対応するデスクリプタの関連付けを設定する
+
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = uniformBuffers[i];
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(UniformBufferObject);
+
+        VkWriteDescriptorSet descriptorWrite{};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        // i番目のdescriptorSetsの0番目の要素をシェーダの0番目のバインディングに設定する
+        descriptorWrite.dstSet = descriptorSets[i];
+        descriptorWrite.dstBinding = 0;
+        descriptorWrite.dstArrayElement = 0;
+        // デスクリプタの種類を設定する。複数のデスクリプタを与えている場合一気に種類を設定する事が出来るので個数を設定する。今回は1
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrite.descriptorCount = 1;
+        // デスクリプタがどのような形で保持されているか。今回はバッファとして保持されているのでpBufferInfoにbufferInfoを渡す
+        descriptorWrite.pBufferInfo = &bufferInfo;
+        descriptorWrite.pImageInfo = nullptr;
+        descriptorWrite.pTexelBufferView = nullptr;
+
+        // デスクリプタの情報を更新する。後ろ2つのパラメータは既存のデスクリプタをコピーする際に使用する
+        vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+    }
+}
+
 void HelloTriangleApplication::createCommandBuffers()
 {
     commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
@@ -1204,6 +1267,16 @@ void HelloTriangleApplication::recordCommandBuffer(VkCommandBuffer commandBuffer
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
     vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
+    // currentFrame番目のデスクリプタセットをシェーダのデスクリプタに割り当てる
+    vkCmdBindDescriptorSets(commandBuffer,
+                            VK_PIPELINE_BIND_POINT_GRAPHICS, // デスクリプタはGPGPUにも使用できるので、グラフィックスかコンピュートのどちらに使用するかを指定する必要がある
+                            pipelineLayout,
+                            0,                             // 何番目のデスクリプタから使い始めるか
+                            1,                             // 何個のデスクリプタを使うか
+                            &descriptorSets[currentFrame], // デスクリプタの配列。ここでは1つしからデスクリプタが無いので、それのポインタを渡している
+                            0,                             // ラスト2つのパラメータはダイナミックデスクリプタのために使用する。今は無視してOK
+                            nullptr);
 
     // インデックスバッファを使用しない描画コマンド
     // 第二引数以降の意味は
@@ -1484,6 +1557,7 @@ void HelloTriangleApplication::cleanup()
         vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
     }
 
+    vkDestroyDescriptorPool(device, descriptorPool, nullptr);
     vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
     vkDestroyBuffer(device, vertexBuffer, nullptr);

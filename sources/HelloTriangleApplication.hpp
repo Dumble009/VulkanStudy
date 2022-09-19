@@ -137,6 +137,8 @@ private:
     VkExtent2D swapChainExtent;                       // スワップチェインに表示する画像のサイズ
     VkRenderPass renderPass;                          // パイプラインの中で取り扱われるテクスチャ群をまとめたレンダーパスのオブジェクト
     VkDescriptorSetLayout descriptorSetLayout;        // シェーダ渡すデスクリプタの情報をまとめるオブジェクト
+    VkDescriptorPool descriptorPool;                  // デスクリプタセットを払いだすためのプール
+    std::vector<VkDescriptorSet> descriptorSets;      // プールから払いだされるデスクリプタセット。スワップチェーンの各フレーム毎に一つ作られる
     VkPipelineLayout pipelineLayout;                  // シェーダーにグローバルな変数を渡して動的に挙動を変更するために使用する。
     VkPipeline graphicsPipeline;
     VkCommandPool commandPool;                   // レンダリングなどのVulkanへのコマンドをキューに流し込むオブジェクト
@@ -209,6 +211,8 @@ private:
         VkBuffer &buffer,
         VkDeviceMemory &bufferMemory);                                          // VkBufferとVkDeviceMemoryの作成処理をまとめたヘルパ関数
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size); // 頂点データを一次バッファからGPUが管理する頂点バッファにコピーする
+    void createDescriptorPool();                                                // デスクリプタセットを発行するためのプールを作成する
+    void createDescriptorSets();                                                // プールからデスクリプタセットを作成する
     void createCommandBuffers();                                                // コマンドバッファを作成する
     void createSyncObjects();                                                   // セマフォやフェンスなど同期するためのオブジェクトを作成する
 
