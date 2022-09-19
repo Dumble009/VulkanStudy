@@ -50,6 +50,7 @@ void HelloTriangleApplication::initVulkan()
     createFramebuffers();
     createCommandPool();
     createVertexBuffer();
+    createIndexBuffer();
     createCommandBuffers();
     createSyncObjects();
 }
@@ -950,6 +951,39 @@ void HelloTriangleApplication::createVertexBuffer()
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
+void HelloTriangleApplication::createIndexBuffer()
+{
+    VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+    // インデックスバッファはGPUのみがアクセスできる領域に作成するので、CPUとGPUが両方アクセス可能な一次バッファを作成する
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    createBuffer(bufferSize,
+                 VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                 stagingBuffer,
+                 stagingBufferMemory);
+
+    void *data;
+    // VRAM上の一次バッファをRAMにマッピングし、そこにインデックス情報を流し込む。使い終わった後はアンマップする。
+    vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, indices.data(), (size_t)bufferSize);
+    vkUnmapMemory(device, stagingBufferMemory);
+
+    // インデックスバッファを作成する。
+    createBuffer(bufferSize,
+                 VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                 indexBuffer,
+                 indexBufferMemory);
+
+    // 一次バッファからインデックスバッファに内容をコピーする
+    copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+
+    vkDestroyBuffer(device, stagingBuffer, nullptr);
+    vkFreeMemory(device, stagingBufferMemory, nullptr);
+}
+
 void HelloTriangleApplication::createBuffer(
     VkDeviceSize size,
     VkBufferUsageFlags usage,
@@ -1124,13 +1158,23 @@ void HelloTriangleApplication::recordCommandBuffer(VkCommandBuffer commandBuffer
     // 0番目から1つのバインド情報でvertexBuffersをバインドする
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-    // 描画コマンド
+    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
+    // インデックスバッファを使用しない描画コマンド
     // 第二引数以降の意味は
     // vertexCount : 頂点データの要素数を流し込む
-    // instanceCount : 今回はインスタンス度レンダリングを行わないので1を指定する
+    // instanceCount : 今回はインスタンスドレンダリングを行わないので1を指定する
     // firstVertex : 何番目の頂点からレンダリングを始めるか
     // firstInstance : 何番目のインスタンスからレンダリングを始めるか
-    vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+    // vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+
+    // インデックスバッファを使用する描画コマンド
+    // 第三引数まではvmCmdDrawと同じ
+    // 第四引数以降の意味は
+    // 4 : インデックスバッファ内のオフセット。今回は先頭から使用するので0。1にすると2番目のインデックスから読み込まれる
+    // 5 : インデックスバッファの値に対するオフセット。今回はインデックスバッファの値をそのまま使用するので0。1等にするとその値が加わったインデックスの頂点情報を参照する
+    // 6 : インスタンスのオフセット。今回はインスタンスドレンダリングを行わないので0
+    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
     // レンダーパスを操作するのを終了する
     vkCmdEndRenderPass(commandBuffer);
@@ -1355,6 +1399,9 @@ void HelloTriangleApplication::cleanup()
     cleanupSwapChain();
 
     vkDestroyBuffer(device, vertexBuffer, nullptr);
+    vkFreeMemory(device, vertexBufferMemory, nullptr);
+
+    vkDestroyBuffer(device, indexBuffer, nullptr);
     vkFreeMemory(device, vertexBufferMemory, nullptr);
 
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)

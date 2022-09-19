@@ -95,10 +95,13 @@ private:
     const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME}; // 物理GPUが対応していてほしい拡張機能の名称のリスト
 
     const std::vector<Vertex> vertices = {
-        {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-        {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-        {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-    };
+        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+        {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+        {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
+
+    const std::vector<uint16_t> indices = {
+        0, 1, 2, 2, 3, 0};
 #ifdef NDEBUG
     const bool enableValidationLayers = false;
 #else
@@ -126,6 +129,8 @@ private:
     std::vector<VkCommandBuffer> commandBuffers; // コマンドプールの記憶実体(?)
     VkBuffer vertexBuffer;                       // 頂点データを格納するバッファ
     VkDeviceMemory vertexBufferMemory;           // 頂点データを格納するバッファのメモリ実体
+    VkBuffer indexBuffer;                        // 各ポリゴンがどの頂点を使用するかをまとめたデータのためのバッファ
+    VkDeviceMemory indexBufferMemory;            // インデックスバッファのメモリ実体
 
     std::vector<VkSemaphore> imageAvailableSemaphores; // スワップチェインから書き込み先の画像を取得してくるのを待つためのセマフォ
     std::vector<VkSemaphore> renderFinishedSemaphores; // スワップチェインへの書き込みが完了するのを待つためのセマフォ
@@ -176,7 +181,8 @@ private:
     void createGraphicsPipeline(); // グラフィックパイプラインを作成する
     void createFramebuffers();     // フレームバッファを作成する
     void createCommandPool();      // コマンドプールを作成する
-    void createVertexBuffer();     // 頂点データを保存しておくためのバッファと、CPUからGPUにデータを転送するための一次バッファを作成する
+    void createVertexBuffer();     // 頂点データを保存しておくためのバッファを作成し、CPUからGPUにデータを転送する
+    void createIndexBuffer();      // インデックスバッファを作成し、CPUからGPUにデータを転送する
     void createBuffer(
         VkDeviceSize size,
         VkBufferUsageFlags usage,
