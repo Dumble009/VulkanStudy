@@ -80,6 +80,13 @@ struct Vertex
     }
 };
 
+struct UniformBufferObject
+{
+    glm::mat4 model;
+    glm::mat4 view;
+    glm::mat4 proj;
+};
+
 class HelloTriangleApplication
 {
 public:
@@ -123,6 +130,7 @@ private:
     VkFormat swapChainImageFormat;                    // スワップチェインに表示する画像の形式
     VkExtent2D swapChainExtent;                       // スワップチェインに表示する画像のサイズ
     VkRenderPass renderPass;                          // パイプラインの中で取り扱われるテクスチャ群をまとめたレンダーパスのオブジェクト
+    VkDescriptorSetLayout descriptorSetLayout;        // シェーダ渡すデスクリプタの情報をまとめるオブジェクト
     VkPipelineLayout pipelineLayout;                  // シェーダーにグローバルな変数を渡して動的に挙動を変更するために使用する。
     VkPipeline graphicsPipeline;
     VkCommandPool commandPool;                   // レンダリングなどのVulkanへのコマンドをキューに流し込むオブジェクト
@@ -174,15 +182,16 @@ private:
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);          // 物理GPU deviceが持っているキューファミリーの中から要求する機能に対応するものを探す
     SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device); // 物理GPU deviceが対応しているスワップチェインの情報を取得する
 
-    void createSwapChain();        // Vulkanのレンダリング結果をウインドウに表示するためのスワップチェインを作成
-    void recreateSwapChain();      // ウインドウサイズが変わったりしたときにスワップチェインを再作成する
-    void createImageViews();       // スワップチェイン内の各画像にアクセスするためのビューを作成する
-    void createRenderPass();       // フレームバッファーに含まれるバッファの種類や数などを定める
-    void createGraphicsPipeline(); // グラフィックパイプラインを作成する
-    void createFramebuffers();     // フレームバッファを作成する
-    void createCommandPool();      // コマンドプールを作成する
-    void createVertexBuffer();     // 頂点データを保存しておくためのバッファを作成し、CPUからGPUにデータを転送する
-    void createIndexBuffer();      // インデックスバッファを作成し、CPUからGPUにデータを転送する
+    void createSwapChain();           // Vulkanのレンダリング結果をウインドウに表示するためのスワップチェインを作成
+    void recreateSwapChain();         // ウインドウサイズが変わったりしたときにスワップチェインを再作成する
+    void createImageViews();          // スワップチェイン内の各画像にアクセスするためのビューを作成する
+    void createRenderPass();          // フレームバッファーに含まれるバッファの種類や数などを定める
+    void createDescriptorSetLayout(); // シェーダに頂点情報以外の情報を伝えるためのデスクリプタを作成する
+    void createGraphicsPipeline();    // グラフィックパイプラインを作成する
+    void createFramebuffers();        // フレームバッファを作成する
+    void createCommandPool();         // コマンドプールを作成する
+    void createVertexBuffer();        // 頂点データを保存しておくためのバッファを作成し、CPUからGPUにデータを転送する
+    void createIndexBuffer();         // インデックスバッファを作成し、CPUからGPUにデータを転送する
     void createBuffer(
         VkDeviceSize size,
         VkBufferUsageFlags usage,

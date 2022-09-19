@@ -46,6 +46,7 @@ void HelloTriangleApplication::initVulkan()
     createSwapChain();
     createImageViews();
     createRenderPass();
+    createDescriptorSetLayout();
     createGraphicsPipeline();
     createFramebuffers();
     createCommandPool();
@@ -678,6 +679,26 @@ void HelloTriangleApplication::createRenderPass()
     }
 }
 
+void HelloTriangleApplication::createDescriptorSetLayout()
+{
+    VkDescriptorSetLayoutBinding uboLayoutBinding{};
+    uboLayoutBinding.binding = 0; // シェーダー内で何番目のバインディングにあたるか
+    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uboLayoutBinding.descriptorCount = 1;
+    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT; // どのシェーダが使用するデスクリプタなのか
+    uboLayoutBinding.pImmutableSamplers = nullptr;            // 画像をデスクリプタとして渡す際に使用するパラメータ
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = 1;
+    layoutInfo.pBindings = &uboLayoutBinding; // デスクリプタのバインディングの配列の先頭ポインタ。今回は一つしか使わないので、普通の変数のポインタを使用している
+
+    if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create descriptor set layout!");
+    }
+}
+
 void HelloTriangleApplication::createGraphicsPipeline()
 {
     auto vertexShaderCode = readFile("shaders/vert.spv");
@@ -817,12 +838,11 @@ void HelloTriangleApplication::createGraphicsPipeline()
     colorBlending.blendConstants[2] = 0.0f;
     colorBlending.blendConstants[3] = 0.0f;
 
-    // シェーダーにグローバルな変数を渡し、動的に挙動を変更したい時に使用する。
-    // 今回は使用しない。
+    // シェーダーにグローバルな変数を渡し、動的に挙動を変更する
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 0;
-    pipelineLayoutInfo.pSetLayouts = nullptr;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout; // シェーダに渡したい変数についての情報
     pipelineLayoutInfo.pushConstantRangeCount = 0;
     pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
@@ -1397,6 +1417,8 @@ void HelloTriangleApplication::cleanup()
         }
     }
     cleanupSwapChain();
+
+    vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
     vkDestroyBuffer(device, vertexBuffer, nullptr);
     vkFreeMemory(device, vertexBufferMemory, nullptr);
