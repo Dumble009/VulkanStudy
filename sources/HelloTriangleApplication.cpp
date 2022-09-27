@@ -1564,7 +1564,7 @@ void HelloTriangleApplication::cleanup()
     vkFreeMemory(device, vertexBufferMemory, nullptr);
 
     vkDestroyBuffer(device, indexBuffer, nullptr);
-    vkFreeMemory(device, vertexBufferMemory, nullptr);
+    vkFreeMemory(device, indexBufferMemory, nullptr);
 
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
