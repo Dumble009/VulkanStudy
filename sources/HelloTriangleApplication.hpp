@@ -159,6 +159,9 @@ private:
     std::vector<VkSemaphore> renderFinishedSemaphores; // スワップチェインへの書き込みが完了するのを待つためのセマフォ
     std::vector<VkFence> inFlightFences;               // あるフレームへのレンダリングが終わるのを待つためのフェンス
 
+    VkImage textureImage;              // モデルに貼り付けるテクスチャ画像
+    VkDeviceMemory textureImageMemory; // テクスチャ画像が格納されるメモリ実体
+
     bool framebufferResized = false; // ウインドウサイズの変更等があったときにそれを知らせるために立てられるフラグ
 
     uint32_t currentFrame = 0; // 今使用しているフレームバッファのインデックス
@@ -197,17 +200,36 @@ private:
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);          // 物理GPU deviceが持っているキューファミリーの中から要求する機能に対応するものを探す
     SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device); // 物理GPU deviceが対応しているスワップチェインの情報を取得する
 
-    void createSwapChain();           // Vulkanのレンダリング結果をウインドウに表示するためのスワップチェインを作成
-    void recreateSwapChain();         // ウインドウサイズが変わったりしたときにスワップチェインを再作成する
-    void createImageViews();          // スワップチェイン内の各画像にアクセスするためのビューを作成する
-    void createRenderPass();          // フレームバッファーに含まれるバッファの種類や数などを定める
-    void createDescriptorSetLayout(); // シェーダに頂点情報以外の情報を伝えるためのデスクリプタを作成する
-    void createGraphicsPipeline();    // グラフィックパイプラインを作成する
-    void createFramebuffers();        // フレームバッファを作成する
-    void createCommandPool();         // コマンドプールを作成する
-    void createVertexBuffer();        // 頂点データを保存しておくためのバッファを作成し、CPUからGPUにデータを転送する
-    void createIndexBuffer();         // インデックスバッファを作成し、CPUからGPUにデータを転送する
-    void createUnifomBuffers();       // シェーダに渡すMVP行列を書き込むためのバッファを作成する
+    void createSwapChain();                                    // Vulkanのレンダリング結果をウインドウに表示するためのスワップチェインを作成
+    void recreateSwapChain();                                  // ウインドウサイズが変わったりしたときにスワップチェインを再作成する
+    void createImageViews();                                   // スワップチェイン内の各画像にアクセスするためのビューを作成する
+    void createRenderPass();                                   // フレームバッファーに含まれるバッファの種類や数などを定める
+    void createDescriptorSetLayout();                          // シェーダに頂点情報以外の情報を伝えるためのデスクリプタを作成する
+    void createGraphicsPipeline();                             // グラフィックパイプラインを作成する
+    void createFramebuffers();                                 // フレームバッファを作成する
+    void createCommandPool();                                  // コマンドプールを作成する
+    VkCommandBuffer beginSingleTimeCommands();                 // 単発実行するためのコマンドバッファを作成する。
+    void endSingleTimeCommands(VkCommandBuffer commandBuffer); // 単発実行するためのコマンドバッファの中身を実行に移す
+    void createTextureImage();                                 // テクスチャ画像を読み込む
+    void createImage(uint32_t width,
+                     uint32_t height,
+                     VkFormat format,
+                     VkImageTiling tiling,
+                     VkImageUsageFlags usage,
+                     VkMemoryPropertyFlags properties,
+                     VkImage &image,
+                     VkDeviceMemory &imageMemory); // VkImageを作成する処理をまとめたユーティリティ関数
+    void transitionImageLayout(VkImage image,
+                               VkFormat format,
+                               VkImageLayout oldLayout,
+                               VkImageLayout newLayout); // VkImageのレイアウトを変更する
+    void createVertexBuffer();                           // 頂点データを保存しておくためのバッファを作成し、CPUからGPUにデータを転送する
+    void createIndexBuffer();                            // インデックスバッファを作成し、CPUからGPUにデータを転送する
+    void copyBufferToImage(VkBuffer buffer,
+                           VkImage image,
+                           uint32_t width,
+                           uint32_t height); // buffer上のテクセルデータをimageに転送する
+    void createUnifomBuffers();              // シェーダに渡すMVP行列を書き込むためのバッファを作成する
     void createBuffer(
         VkDeviceSize size,
         VkBufferUsageFlags usage,

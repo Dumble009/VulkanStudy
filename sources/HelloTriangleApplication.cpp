@@ -50,6 +50,7 @@ void HelloTriangleApplication::initVulkan()
     createGraphicsPipeline();
     createFramebuffers();
     createCommandPool();
+    createTextureImage();
     createVertexBuffer();
     createIndexBuffer();
     createUnifomBuffers();
@@ -940,6 +941,205 @@ void HelloTriangleApplication::createCommandPool()
     }
 }
 
+VkCommandBuffer HelloTriangleApplication::beginSingleTimeCommands()
+{
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandPool = commandPool;
+    allocInfo.commandBufferCount = 1;
+
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+    return commandBuffer;
+}
+
+void HelloTriangleApplication::endSingleTimeCommands(VkCommandBuffer commandBuffer)
+{
+    vkEndCommandBuffer(commandBuffer);
+
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+
+    vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(graphicsQueue);
+
+    vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+}
+
+void HelloTriangleApplication::createTextureImage()
+{
+    // テクスチャ画像を読み込む
+    int texWidth, texHeight, texChannels;
+    stbi_uc *pixels = stbi_load("textures/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+    VkDeviceSize imageSize = texWidth * texHeight * 4; // RGBAが1バイトずつ並ぶ
+
+    if (!pixels)
+    {
+        throw std::runtime_error("failed to load texture image!");
+    }
+
+    // まずはCPUから見える領域にテクスチャを転送して、その後GPUのみが見える領域にコピーする
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+
+    createBuffer(imageSize,
+                 VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                 stagingBuffer,
+                 stagingBufferMemory);
+
+    void *data;
+    vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+    memcpy(data, pixels, static_cast<size_t>(imageSize));
+    vkUnmapMemory(device, stagingBufferMemory);
+
+    stbi_image_free(pixels);
+
+    // 最終的な伝送先となるImageを作成する
+    createImage(texWidth,
+                texHeight,
+                VK_FORMAT_R8G8B8A8_SRGB,
+                VK_IMAGE_TILING_OPTIMAL,
+                VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                textureImage,
+                textureImageMemory);
+
+    // textureImageのレイアウトを転送するのに最適な形に変換する
+    transitionImageLayout(textureImage,
+                          VK_FORMAT_R8G8B8A8_SRGB,
+                          VK_IMAGE_LAYOUT_UNDEFINED,
+                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+    transitionImageLayout(textureImage,
+                          VK_FORMAT_R8G8B8A8_SRGB,
+                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    // 転送用のステージングバッファはもう不要なので消してしまう。
+    vkDestroyBuffer(device, stagingBuffer, nullptr);
+    vkFreeMemory(device, stagingBufferMemory, nullptr);
+}
+
+void HelloTriangleApplication::createImage(uint32_t width,
+                                           uint32_t height,
+                                           VkFormat format,
+                                           VkImageTiling tiling,
+                                           VkImageUsageFlags usage,
+                                           VkMemoryPropertyFlags properties,
+                                           VkImage &image,
+                                           VkDeviceMemory &imageMemory)
+{
+    // 画像をVkImageの形でロードする
+    VkImageCreateInfo imageInfo{};
+    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageInfo.extent.width = width;
+    imageInfo.extent.height = height;
+    imageInfo.extent.depth = 1; // 3次元テクスチャにおける3次元方向のサイズ。今回は平面のテクスチャなので厚みは1
+    imageInfo.mipLevels = 1;
+    imageInfo.arrayLayers = 1;
+    imageInfo.format = format;                           // STBで読み込んだ画像はRGBAになっているので、それと合わせた形式にしておく必要がある
+    imageInfo.tiling = tiling;                           // テクセルの配置を最適な形で再配置するか。再配置するとピクセル単位でのアクセスする事は出来なくなるが、今回はその必要が無いので再配置をしてもらう
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; // このImageにテクセル情報が書き込まれる段階で書き込まれたテクセル情報の並びをそのまま維持し続けるかどうか。今回はその必要が無いので、自由にしてもらう
+    imageInfo.usage = usage;                             // このImageは転送される側であり、シェーダから色をサンプルできるようにしてほしい
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;   // グラフィックスコマンドを扱うキューのみからアクセスできれば良い
+    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;           // マルチサンプリングに関する設定。アタッチメントに使用するImageのみに関連する設定項目。ここではマルチサンプリングはしないように設定する
+    imageInfo.flags = 0;
+
+    if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create image!");
+    }
+
+    VkMemoryRequirements memRequirements;
+    vkGetImageMemoryRequirements(device, image, &memRequirements);
+
+    VkMemoryAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
+
+    if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to allocate image memory!");
+    }
+
+    vkBindImageMemory(device, image, imageMemory, 0);
+}
+
+void HelloTriangleApplication::transitionImageLayout(VkImage image,
+                                                     VkFormat format,
+                                                     VkImageLayout oldLayout,
+                                                     VkImageLayout newLayout)
+{
+    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+
+    // image memory barrierを使用してレイアウトの変更ができるらしい
+    VkImageMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout = oldLayout;
+    barrier.newLayout = newLayout;
+    // キューファミリーのオーナーシップを転送する際にはこれらのインデックスにキューファミリーのインデックスを入れる
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = image;
+    // imageのどの範囲のレイアウトを変更するかをsubresourceRangeで指定する。ここでは画像全域を指定している。
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+
+    // どのレイアウトからどのレイアウトに変化するか次第でどのステージを待ってどのステージに進むのかを決定する
+    VkPipelineStageFlags sourceStage;
+    VkPipelineStageFlags destinationStage;
+
+    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+    {
+        // 作られたばかりの未定義なレイアウトのImageへBuffer上に読み込んだデータを転送するために転送に適した形式に変換する場合
+        barrier.srcAccessMask = 0;                            // バリアが完了するのを待つ操作。ここでは特に何も待たない
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; // 全ての処理を待った後に行われる処理。転送の書き込み処理
+
+        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;   // パイプラインの開始→待つステージは特にない
+        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT; // 転送処理ステージ
+    }
+    else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+    {
+        // Bufferからデータを転送されたImageをシェーダがサンプリングするのに適した形式に変換する場合
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; // バリアが完了するのを待つ操作。転送の書き込み処理
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;    // 全ての処理を待った後に行われる処理。シェーダからの読み込み処理
+
+        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    }
+    else
+    {
+        throw std::invalid_argument("unsupported layout transition!");
+    }
+
+    vkCmdPipelineBarrier(
+        commandBuffer,
+        sourceStage,      // バリアの前までにパイプラインのどのステージが終わっていないといけないか
+        destinationStage, // バリアが解除された後に実行された後に実行されるステージ。バリアはどのステージのために処理を待つのか
+        0,
+        0, nullptr,
+        0, nullptr,
+        1, &barrier);
+
+    endSingleTimeCommands(commandBuffer);
+}
+
 void HelloTriangleApplication::createVertexBuffer()
 {
     VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
@@ -1011,6 +1211,40 @@ void HelloTriangleApplication::createIndexBuffer()
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
+void HelloTriangleApplication::copyBufferToImage(VkBuffer buffer,
+                                                 VkImage image,
+                                                 uint32_t width,
+                                                 uint32_t height)
+{
+    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+
+    VkBufferImageCopy region{};
+    // バッファのどの範囲をコピー対象とするか
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+    // 画像のどの範囲にコピーするか
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+    region.imageOffset = {0, 0, 0};
+    region.imageExtent = {
+        width,
+        height,
+        1};
+
+    vkCmdCopyBufferToImage(
+        commandBuffer,
+        buffer,
+        image,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, // 現在の画像のレイアウトを指定する
+        1,
+        &region);
+
+    endSingleTimeCommands(commandBuffer);
+}
+
 void HelloTriangleApplication::createBuffer(
     VkDeviceSize size,
     VkBufferUsageFlags usage,
@@ -1052,40 +1286,13 @@ void HelloTriangleApplication::createBuffer(
 
 void HelloTriangleApplication::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
 {
-    // コピーのためのコマンドをコマンドバッファに記録する
-    VkCommandBufferAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandPool = commandPool;
-    allocInfo.commandBufferCount = 1;
+    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
-    VkCommandBuffer commandBuffer;
-    vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
-
-    VkCommandBufferBeginInfo beginInfo{};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT; // 使い捨てのコマンドバッファであることを指定している
-
-    vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-    VkBufferCopy copyRegion{}; // バッファ間でコピーを行う範囲を指定する
-    copyRegion.srcOffset = 0;
-    copyRegion.dstOffset = 0;
+    VkBufferCopy copyRegion{};
     copyRegion.size = size;
-    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion); // srcBufferからdstBufferに内容をコピーする
+    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
-    vkEndCommandBuffer(commandBuffer);
-
-    // 今記録した転送処理を実行する
-    VkSubmitInfo submitInfo{};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBuffer;
-
-    vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(graphicsQueue); // 転送処理が完了するまで待つ
-
-    vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+    endSingleTimeCommands(commandBuffer);
 }
 
 void HelloTriangleApplication::createUnifomBuffers()
@@ -1550,6 +1757,9 @@ void HelloTriangleApplication::cleanup()
         }
     }
     cleanupSwapChain();
+
+    vkDestroyImage(device, textureImage, nullptr);
+    vkFreeMemory(device, textureImageMemory, nullptr);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
