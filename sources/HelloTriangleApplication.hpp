@@ -56,6 +56,7 @@ struct Vertex
 {
     glm::vec2 pos;
     glm::vec3 color;
+    glm::vec2 texCoord;
 
     static VkVertexInputBindingDescription getBindingDescription()
     {
@@ -69,24 +70,30 @@ struct Vertex
         return bindingDescription;
     }
 
-    static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions()
+    static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions()
     {
         // CPU上の頂点情報をGPUに渡し際の渡し方を決定する
-        std::array<VkVertexInputAttributeDescription, 2> attributeDescription{};
+        std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
 
         // 頂点座標のバインディングの設定
-        attributeDescription[0].binding = 0;                      // どのインデックスのバインディングと紐づくか
-        attributeDescription[0].location = 0;                     // vertexシェーダの何番目のinputと紐づくか
-        attributeDescription[0].format = VK_FORMAT_R32G32_SFLOAT; // データのフォーマット、32ビットのfloatデータが2つ
-        attributeDescription[0].offset = offsetof(Vertex, pos);   // 構造体の先頭アドレスから頂点座標が入っているアドレスのオフセット
+        attributeDescriptions[0].binding = 0;                      // どのインデックスのバインディングと紐づくか
+        attributeDescriptions[0].location = 0;                     // vertexシェーダの何番目のinputと紐づくか
+        attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT; // データのフォーマット、32ビットのfloatデータが2つ
+        attributeDescriptions[0].offset = offsetof(Vertex, pos);   // 構造体の先頭アドレスから頂点座標が入っているアドレスのオフセット
 
         // 頂点色のバインディングの設定
-        attributeDescription[1].binding = 0;
-        attributeDescription[1].location = 1;
-        attributeDescription[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attributeDescription[1].offset = offsetof(Vertex, color);
+        attributeDescriptions[1].binding = 0;
+        attributeDescriptions[1].location = 1;
+        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescriptions[1].offset = offsetof(Vertex, color);
 
-        return attributeDescription;
+        // テクスチャのUVマッピングのバインディングの設定
+        attributeDescriptions[2].binding = 0;
+        attributeDescriptions[2].location = 2;
+        attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+        attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
+
+        return attributeDescriptions;
     }
 };
 
@@ -112,10 +119,10 @@ private:
     const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME}; // 物理GPUが対応していてほしい拡張機能の名称のリスト
 
     const std::vector<Vertex> vertices = {
-        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-        {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-        {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
+        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+        {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+        {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}};
 
     const std::vector<uint16_t> indices = {
         0, 1, 2, 2, 3, 0};
