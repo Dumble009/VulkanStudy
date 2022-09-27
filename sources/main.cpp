@@ -2,6 +2,11 @@
 #include <iostream>  // 入出力
 #include <stdexcept> // 例外処理のexceptionクラスを使用するのに必要
 #include <cstdlib>   // EXIT_FAILURE, EXIT_SUCCESSマクロに使用
+
+// STBの実装部をコンパイルするために必要な宣言。
+// HelloTriangleApplication.hppの方で宣言してしまうと、実装部が2つ出来てしまうのでコンパイルが上手くいかない。
+#define STB_IMAGE_IMPLEMENTATION
+
 // ----------自作クラスのinclude----------
 #include <HelloTriangleApplication.hpp>
 

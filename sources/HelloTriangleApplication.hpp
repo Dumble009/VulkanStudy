@@ -24,8 +24,12 @@
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+
 // ----------Win32APIのinclude----------------
 #include "windows.h"
+
+// ----------STB(画像ライブラリ)のinclude---------------
+#include "stb_image.h"
 
 // 各コマンドに対応するキューのIDをまとめて保持する構造体
 struct QueueFamilyIndices
