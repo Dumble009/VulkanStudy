@@ -51,6 +51,7 @@ void HelloTriangleApplication::initVulkan()
     createFramebuffers();
     createCommandPool();
     createTextureImage();
+    createTextureImageView();
     createVertexBuffer();
     createIndexBuffer();
     createUnifomBuffers();
@@ -601,32 +602,34 @@ void HelloTriangleApplication::recreateSwapChain()
 void HelloTriangleApplication::createImageViews()
 {
     swapChainImageViews.resize(swapChainImages.size());
-    for (size_t i = 0; i < swapChainImages.size(); i++)
+
+    for (uint32_t i = 0; i < swapChainImages.size(); i++)
     {
-        VkImageViewCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        createInfo.image = swapChainImages[i];
-        createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        createInfo.format = swapChainImageFormat;
-
-        // 各チャンネルの扱い方を指定する。ここではデフォルトの扱い方を指定している
-        createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-
-        // 画像の扱い方とミップマップ、レイヤーの設定を行う
-        createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        createInfo.subresourceRange.baseMipLevel = 0;
-        createInfo.subresourceRange.levelCount = 1;
-        createInfo.subresourceRange.baseArrayLayer = 0;
-        createInfo.subresourceRange.layerCount = 1;
-
-        if (vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to create image views!");
-        }
+        swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat);
     }
+}
+
+VkImageView HelloTriangleApplication::createImageView(VkImage image, VkFormat format)
+{
+    VkImageViewCreateInfo viewInfo{};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.image = image;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = format;
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = 1;
+
+    VkImageView imageView;
+
+    if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create texture image view!");
+    }
+
+    return imageView;
 }
 
 void HelloTriangleApplication::createRenderPass()
@@ -1031,6 +1034,11 @@ void HelloTriangleApplication::createTextureImage()
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
+void HelloTriangleApplication::createTextureImageView()
+{
+    textureImageView = createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB);
+}
+
 void HelloTriangleApplication::createImage(uint32_t width,
                                            uint32_t height,
                                            VkFormat format,
@@ -1138,6 +1146,41 @@ void HelloTriangleApplication::transitionImageLayout(VkImage image,
         1, &barrier);
 
     endSingleTimeCommands(commandBuffer);
+}
+
+void HelloTriangleApplication::createTextureSampler()
+{
+    VkSamplerCreateInfo samplerInfo{};
+    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerInfo.magFilter = VK_FILTER_LINEAR; // フラグメントの数がテクセルの数より多い(拡大されている)時にどうやってサンプリングするか
+    samplerInfo.minFilter = VK_FILTER_LINEAR; // フラグメントの数がテクセルの数より少ない(縮小されている)時にどうやってサンプリングするか
+    // テクスチャの範囲外のテクセルをサンプリングする時にどうするか。ここでは同じテクスチャがループして続いているものとして扱っている
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    // 異方性フィルタリングの設定
+    samplerInfo.anisotropyEnable = VK_TRUE;
+    // 異方性フィルタリングのためにいくつのテクセルからサンプリングすればいいかをデバイスのプロパティから決める
+    VkPhysicalDeviceProperties properties{};
+    vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+    samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+    // addressModeをBorderにした時に使用されるプロパティ。今回は何でもいい
+    samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    // UV座標系として0~画像幅の座標系を使用するか、0~1の座標系を使用するか。ここでは0~1を使用するよう指定する
+    samplerInfo.unnormalizedCoordinates = VK_FALSE;
+    // シャドウマップ等を作成するのに使う処理。ここでは何も使用しない
+    samplerInfo.compareEnable = VK_FALSE;
+    samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+    // みっぷマップ関連の処理
+    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    samplerInfo.mipLodBias = 0.0f;
+    samplerInfo.minLod = 0.0f;
+    samplerInfo.maxLod = 0.0f;
+
+    if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create texture sampler!");
+    }
 }
 
 void HelloTriangleApplication::createVertexBuffer()
@@ -1757,6 +1800,9 @@ void HelloTriangleApplication::cleanup()
         }
     }
     cleanupSwapChain();
+
+    vkDestroySampler(device, textureSampler, nullptr);
+    vkDestroyImageView(device, textureImageView, nullptr);
 
     vkDestroyImage(device, textureImage, nullptr);
     vkFreeMemory(device, textureImageMemory, nullptr);

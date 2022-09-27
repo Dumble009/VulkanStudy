@@ -161,6 +161,8 @@ private:
 
     VkImage textureImage;              // モデルに貼り付けるテクスチャ画像
     VkDeviceMemory textureImageMemory; // テクスチャ画像が格納されるメモリ実体
+    VkImageView textureImageView;      // テクスチャのビュー
+    VkSampler textureSampler;          // テクスチャのサンプラー
 
     bool framebufferResized = false; // ウインドウサイズの変更等があったときにそれを知らせるために立てられるフラグ
 
@@ -200,17 +202,18 @@ private:
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);          // 物理GPU deviceが持っているキューファミリーの中から要求する機能に対応するものを探す
     SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device); // 物理GPU deviceが対応しているスワップチェインの情報を取得する
 
-    void createSwapChain();                                    // Vulkanのレンダリング結果をウインドウに表示するためのスワップチェインを作成
-    void recreateSwapChain();                                  // ウインドウサイズが変わったりしたときにスワップチェインを再作成する
-    void createImageViews();                                   // スワップチェイン内の各画像にアクセスするためのビューを作成する
-    void createRenderPass();                                   // フレームバッファーに含まれるバッファの種類や数などを定める
-    void createDescriptorSetLayout();                          // シェーダに頂点情報以外の情報を伝えるためのデスクリプタを作成する
-    void createGraphicsPipeline();                             // グラフィックパイプラインを作成する
-    void createFramebuffers();                                 // フレームバッファを作成する
-    void createCommandPool();                                  // コマンドプールを作成する
-    VkCommandBuffer beginSingleTimeCommands();                 // 単発実行するためのコマンドバッファを作成する。
-    void endSingleTimeCommands(VkCommandBuffer commandBuffer); // 単発実行するためのコマンドバッファの中身を実行に移す
-    void createTextureImage();                                 // テクスチャ画像を読み込む
+    void createSwapChain();                                      // Vulkanのレンダリング結果をウインドウに表示するためのスワップチェインを作成
+    void recreateSwapChain();                                    // ウインドウサイズが変わったりしたときにスワップチェインを再作成する
+    void createImageViews();                                     // スワップチェイン内の各画像にアクセスするためのビューを作成する
+    VkImageView createImageView(VkImage image, VkFormat format); // 画像のビューを作成する処理をまとめたヘルパー関数
+    void createRenderPass();                                     // フレームバッファーに含まれるバッファの種類や数などを定める
+    void createDescriptorSetLayout();                            // シェーダに頂点情報以外の情報を伝えるためのデスクリプタを作成する
+    void createGraphicsPipeline();                               // グラフィックパイプラインを作成する
+    void createFramebuffers();                                   // フレームバッファを作成する
+    void createCommandPool();                                    // コマンドプールを作成する
+    VkCommandBuffer beginSingleTimeCommands();                   // 単発実行するためのコマンドバッファを作成する。
+    void endSingleTimeCommands(VkCommandBuffer commandBuffer);   // 単発実行するためのコマンドバッファの中身を実行に移す
+    void createTextureImage();                                   // モデルに貼り付けるテクスチャ画像を読み込む
     void createImage(uint32_t width,
                      uint32_t height,
                      VkFormat format,
@@ -223,6 +226,8 @@ private:
                                VkFormat format,
                                VkImageLayout oldLayout,
                                VkImageLayout newLayout); // VkImageのレイアウトを変更する
+    void createTextureImageView();                       // モデルに貼り付けるテクスチャのビューを作成する。
+    void createTextureSampler();                         // テクスチャのサンプラー(テクセルのサンプル方法を定義するオブジェクト)を作成する
     void createVertexBuffer();                           // 頂点データを保存しておくためのバッファを作成し、CPUからGPUにデータを転送する
     void createIndexBuffer();                            // インデックスバッファを作成し、CPUからGPUにデータを転送する
     void copyBufferToImage(VkBuffer buffer,
