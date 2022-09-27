@@ -363,7 +363,8 @@ void HelloTriangleApplication::createLogicalDevice()
         queueCreateInfos.push_back(queueCreateInfo);
     }
 
-    VkPhysicalDeviceFeatures deviceFeatures{}; // キューに要求する機能。今は空にしておく
+    VkPhysicalDeviceFeatures deviceFeatures{};  // キューに要求する機能。今は空にしておく
+    deviceFeatures.samplerAnisotropy = VK_TRUE; // 異方性フィルタリングが出来る事
 
     // ここから論理デバイスの作成情報を埋めていく
     VkDeviceCreateInfo createInfo{};
@@ -416,7 +417,10 @@ bool HelloTriangleApplication::isDeviceSuitable(VkPhysicalDevice device)
         swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
     }
 
-    return indices.isComplete() & extensionSupported & swapChainAdequate;
+    VkPhysicalDeviceFeatures supportedFeatures;
+    vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
+
+    return indices.isComplete() && extensionSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
 }
 
 bool HelloTriangleApplication::checkDeviceExtensionSupport(VkPhysicalDevice device)
