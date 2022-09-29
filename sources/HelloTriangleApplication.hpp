@@ -22,6 +22,7 @@
 
 // ----------GLMのinclude----------
 #define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE // GLMのデフォルトでは深度は-1.0~1.0で扱われるが、Vulkanでは0.0~1.0なので変更する
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -122,10 +123,18 @@ private:
         {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
         {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
         {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-        {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}};
+        {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+
+        {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+        {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+        {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+        {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+
+    };
 
     const std::vector<uint16_t> indices = {
-        0, 1, 2, 2, 3, 0};
+        0, 1, 2, 2, 3, 0,
+        4, 5, 6, 6, 7, 4};
 #ifdef NDEBUG
     const bool enableValidationLayers = false;
 #else
@@ -171,6 +180,10 @@ private:
     VkImageView textureImageView;      // テクスチャのビュー
     VkSampler textureSampler;          // テクスチャのサンプラー
 
+    VkImage depthImage;              // 深度バッファのイメージ
+    VkDeviceMemory depthImageMemory; // 深度バッファが実際に格納されるメモリ実体
+    VkImageView depthImageView;      // 深度バッファのビュー
+
     bool framebufferResized = false; // ウインドウサイズの変更等があったときにそれを知らせるために立てられるフラグ
 
     uint32_t currentFrame = 0; // 今使用しているフレームバッファのインデックス
@@ -209,15 +222,23 @@ private:
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);          // 物理GPU deviceが持っているキューファミリーの中から要求する機能に対応するものを探す
     SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device); // 物理GPU deviceが対応しているスワップチェインの情報を取得する
 
-    void createSwapChain();                                      // Vulkanのレンダリング結果をウインドウに表示するためのスワップチェインを作成
-    void recreateSwapChain();                                    // ウインドウサイズが変わったりしたときにスワップチェインを再作成する
-    void createImageViews();                                     // スワップチェイン内の各画像にアクセスするためのビューを作成する
-    VkImageView createImageView(VkImage image, VkFormat format); // 画像のビューを作成する処理をまとめたヘルパー関数
+    void createSwapChain();   // Vulkanのレンダリング結果をウインドウに表示するためのスワップチェインを作成
+    void recreateSwapChain(); // ウインドウサイズが変わったりしたときにスワップチェインを再作成する
+    void createImageViews();  // スワップチェイン内の各画像にアクセスするためのビューを作成する
+    VkImageView createImageView(VkImage image,
+                                VkFormat format,
+                                VkImageAspectFlags aspectFlags); // 画像のビューを作成する処理をまとめたヘルパー関数
     void createRenderPass();                                     // フレームバッファーに含まれるバッファの種類や数などを定める
     void createDescriptorSetLayout();                            // シェーダに頂点情報以外の情報を伝えるためのデスクリプタを作成する
     void createGraphicsPipeline();                               // グラフィックパイプラインを作成する
     void createFramebuffers();                                   // フレームバッファを作成する
     void createCommandPool();                                    // コマンドプールを作成する
+    void createDepthResources();                                 // 深度バッファを作成する
+    VkFormat findDepthFormat();                                  // 最も適した深度バッファのフォーマットを調べて返す
+    VkFormat findSupportedFormat(const std::vector<VkFormat> &candidates,
+                                 VkImageTiling tiling,
+                                 VkFormatFeatureFlags features); // candidatesのフォーマットの中からtilingのタイリングパターンでfeaturesの機能を提供できるフォーマットを返す
+    bool hasStencilComponent(VkFormat format);                   // 深度バッファのフォーマットformatがステンシルを取り扱えるかどうかを調べて返す
     VkCommandBuffer beginSingleTimeCommands();                   // 単発実行するためのコマンドバッファを作成する。
     void endSingleTimeCommands(VkCommandBuffer commandBuffer);   // 単発実行するためのコマンドバッファの中身を実行に移す
     void createTextureImage();                                   // モデルに貼り付けるテクスチャ画像を読み込む

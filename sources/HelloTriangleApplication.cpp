@@ -50,6 +50,7 @@ void HelloTriangleApplication::initVulkan()
     createGraphicsPipeline();
     createFramebuffers();
     createCommandPool();
+    createDepthResources();
     createTextureImage();
     createTextureImageView();
     createTextureSampler();
@@ -615,18 +616,18 @@ void HelloTriangleApplication::createImageViews()
 
     for (uint32_t i = 0; i < swapChainImages.size(); i++)
     {
-        swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat);
+        swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
     }
 }
 
-VkImageView HelloTriangleApplication::createImageView(VkImage image, VkFormat format)
+VkImageView HelloTriangleApplication::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
 {
     VkImageViewCreateInfo viewInfo{};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.image = image;
     viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
     viewInfo.format = format;
-    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.subresourceRange.aspectMask = aspectFlags;
     viewInfo.subresourceRange.baseMipLevel = 0;
     viewInfo.subresourceRange.levelCount = 1;
     viewInfo.subresourceRange.baseArrayLayer = 0;
@@ -660,17 +661,34 @@ void HelloTriangleApplication::createRenderPass()
     colorAttachmentRef.attachment = 0;                                    // どのテクスチャについてか。レンダーパス全体における0番のテクスチャのメタ情報
     colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; // 色を取り扱うのに最適となるようにサブパスを並び変えるように指示する
 
+    // 深度バッファに使用するテクスチャの情報を定義する
+    VkAttachmentDescription depthAttachment{};
+    depthAttachment.format = findDepthFormat();
+    depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; // 描画が完了したら深度バッファは使用しないので、レンダリング後はどういう形式になっても気にしない
+    depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentReference depthAttachmentRef{};
+    depthAttachmentRef.attachment = 1;
+    depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
     VkSubpassDescription subpass{};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS; // このサブパスがレンダリング用のものであることを示す
-    subpass.colorAttachmentCount = 1;                            // このサブパスが何枚のテクスチャを持つか
+    subpass.colorAttachmentCount = 1;                            // このサブパスが何枚のカラーテクスチャを持つか
     subpass.pColorAttachments = &colorAttachmentRef;             // サブパスに渡されてくる各テクスチャのメタデータの配列(ポインタ)
+    subpass.pDepthStencilAttachment = &depthAttachmentRef;       // サブパスに渡されてくる深度テクスチャのメタデータの配列。深度テクスチャは最大1枚しか使用しないので、colorAttachmentCountに相当するメンバは無い。
 
+    std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
     VkRenderPassCreateInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassInfo.attachmentCount = 1;             // レンダーパス全体で扱うテクスチャの数
-    renderPassInfo.pAttachments = &colorAttachment; // レンダーパスで扱うテクスチャ情報の配列
-    renderPassInfo.subpassCount = 1;                // レンダーパスに含まれるサブパスの数
-    renderPassInfo.pSubpasses = &subpass;           // レンダーパスに含まれるサブパスの配列
+    renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size()); // レンダーパス全体で扱うテクスチャの数
+    renderPassInfo.pAttachments = attachments.data();                           // レンダーパスで扱うテクスチャ情報の配列
+    renderPassInfo.subpassCount = 1;                                            // レンダーパスに含まれるサブパスの数
+    renderPassInfo.pSubpasses = &subpass;                                       // レンダーパスに含まれるサブパスの配列
 
     // サブパス間の依存関係を定義する
     VkSubpassDependency dependency{};
@@ -678,14 +696,13 @@ void HelloTriangleApplication::createRenderPass()
     dependency.srcSubpass = VK_SUBPASS_EXTERNAL; // 暗黙的に作られる全てのサブパスが開始される前段階のサブパスをsrcとして指定
     dependency.dstSubpass = 0;                   // 0番目のサブパス(上で作ったサブパス)をdstとして指定
     // どのステージのどの操作がどのステージのどの操作を待つのかを指定する
+    // ここでは色を書き込むアタッチメントと深度を書き込むアタッチメントの読み込み処理が完了してから書き込むように指定している
     // 待たれる対象
-    // アタッチメントへの出力のステージで出力画像への色の出力が完了する
-    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     dependency.srcAccessMask = 0; // ここで操作の種類を指定するが、何も指定しないと全ての操作になる(?)
     // 待つ対象
-    // アタッチメントへの出力のステージで、画像への色の出力を行う
-    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
     renderPassInfo.dependencyCount = 1;
     renderPassInfo.pDependencies = &dependency;
@@ -1000,6 +1017,62 @@ void HelloTriangleApplication::endSingleTimeCommands(VkCommandBuffer commandBuff
     vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 }
 
+void HelloTriangleApplication::createDepthResources()
+{
+    VkFormat depthFormat = findDepthFormat();
+    createImage(swapChainExtent.width,
+                swapChainExtent.height,
+                depthFormat,
+                VK_IMAGE_TILING_OPTIMAL,
+                VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                depthImage,
+                depthImageMemory);
+
+    depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+    transitionImageLayout(depthImage,
+                          depthFormat,
+                          VK_IMAGE_LAYOUT_UNDEFINED,
+                          VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+}
+
+VkFormat HelloTriangleApplication::findDepthFormat()
+{
+    return findSupportedFormat(
+        {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+}
+
+VkFormat HelloTriangleApplication::findSupportedFormat(const std::vector<VkFormat> &candidates,
+                                                       VkImageTiling tiling,
+                                                       VkFormatFeatureFlags features)
+{
+    for (VkFormat format : candidates)
+    {
+        VkFormatProperties props;
+        vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
+
+        // 物理デバイスが、要求するタイリングの仕方で必要とする機能を提供できるかどうかを調べる
+        if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
+        {
+            return format;
+        }
+        else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
+        {
+            return format;
+        }
+    }
+
+    throw std::runtime_error("failed to find supported format!");
+}
+
+bool HelloTriangleApplication::hasStencilComponent(VkFormat format)
+{
+    return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
+}
+
 void HelloTriangleApplication::createTextureImage()
 {
     // テクスチャ画像を読み込む
@@ -1059,7 +1132,7 @@ void HelloTriangleApplication::createTextureImage()
 
 void HelloTriangleApplication::createTextureImageView()
 {
-    textureImageView = createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB);
+    textureImageView = createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
 void HelloTriangleApplication::createImage(uint32_t width,
@@ -1126,11 +1199,23 @@ void HelloTriangleApplication::transitionImageLayout(VkImage image,
     barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.image = image;
     // imageのどの範囲のレイアウトを変更するかをsubresourceRangeで指定する。ここでは画像全域を指定している。
-    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     barrier.subresourceRange.baseMipLevel = 0;
     barrier.subresourceRange.levelCount = 1;
     barrier.subresourceRange.baseArrayLayer = 0;
     barrier.subresourceRange.layerCount = 1;
+
+    if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+    {
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        if (hasStencilComponent(format))
+        {
+            barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+        }
+    }
+    else
+    {
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    }
 
     // どのレイアウトからどのレイアウトに変化するか次第でどのステージを待ってどのステージに進むのかを決定する
     VkPipelineStageFlags sourceStage;
@@ -1153,6 +1238,14 @@ void HelloTriangleApplication::transitionImageLayout(VkImage image,
 
         sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
         destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    }
+    else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+    {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;               // パイプラインの開始→待つステージは特にない
+        destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT; // フラグメントバッファにおける深度テストのステージ
     }
     else
     {
