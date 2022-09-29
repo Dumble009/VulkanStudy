@@ -599,14 +599,11 @@ void HelloTriangleApplication::recreateSwapChain()
     }
     vkDeviceWaitIdle(device); // レンダリング中のフレームバッファを操作したりしないようにアイドル状態になるまで待機する
 
+    cleanupSwapChain(); // スワップチェインを作り直す前に既存のリソースを全て削除する。
+
     createSwapChain();
-    // イメージバッファとフレームバッファのサイズ等はスワップチェインの設定に依存しているので作り直す
-    for (uint32_t i = 0; i < swapChainImages.size(); i++)
-    {
-        vkDestroyImageView(device, swapChainImageViews[i], nullptr);
-        vkDestroyFramebuffer(device, swapChainFramebuffers[i], nullptr);
-    }
     createImageViews();
+    createDepthResources();
     createFramebuffers();
 }
 
@@ -1997,6 +1994,10 @@ void HelloTriangleApplication::cleanup()
 
 void HelloTriangleApplication::cleanupSwapChain()
 {
+    vkDestroyImageView(device, depthImageView, nullptr);
+    vkDestroyImage(device, depthImage, nullptr);
+    vkFreeMemory(device, depthImageMemory, nullptr);
+
     for (size_t i = 0; i < swapChainFramebuffers.size(); i++)
     {
         vkDestroyFramebuffer(device, swapChainFramebuffers[i], nullptr);
