@@ -1613,9 +1613,12 @@ void HelloTriangleApplication::recordCommandBuffer(VkCommandBuffer commandBuffer
     renderPassInfo.renderArea.offset = {0, 0};
     renderPassInfo.renderArea.extent = swapChainExtent;
     // 背景色(何もポリゴンが存在しないところ)を何色に塗るか
-    VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-    renderPassInfo.clearValueCount = 1;
-    renderPassInfo.pClearValues = &clearColor;
+    std::array<VkClearValue, 2> clearValues{};
+    // カラーバッファと深度バッファを初期化する際に塗りつぶす値を設定する
+    clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+    clearValues[1].depthStencil = {1.0f, 0}; // 深度の範囲は0~1。最も遠い点(遠い方のクリッピングプレーンまでの距離)が1なので、深度バッファは最も遠い点までの距離でクリアしている
+    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+    renderPassInfo.pClearValues = clearValues.data();
 
     // コマンドバッファに今まで設定したレンダーパス関連の情報を流し込むコマンド
     // 最後のフラグは、このコマンドバッファが二次的なものでないことを示している
