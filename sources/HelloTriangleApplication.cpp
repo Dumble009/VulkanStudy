@@ -883,6 +883,18 @@ void HelloTriangleApplication::createGraphicsPipeline()
     colorBlending.blendConstants[2] = 0.0f;
     colorBlending.blendConstants[3] = 0.0f;
 
+    VkPipelineDepthStencilStateCreateInfo depthStencil{};
+    depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depthStencil.depthTestEnable = VK_TRUE;           // 深度テストを行うように設定
+    depthStencil.depthWriteEnable = VK_TRUE;          // レンダリング時に深度値を書き込むように設定
+    depthStencil.depthCompareOp = VK_COMPARE_OP_LESS; // 深度値が低い方(カメラに近い方)がテストに通るように設定。
+    depthStencil.depthBoundsTestEnable = VK_FALSE;    // 特殊な深度テストをするかどうか。今回はしない。
+    depthStencil.minDepthBounds = 0.0f;               // 上記の深度テストで使用する値。今回は無関係。
+    depthStencil.maxDepthBounds = 1.0f;               // 上記の深度テストで使用する値。今回は無関係。
+    depthStencil.stencilTestEnable = VK_FALSE;        // ステンシルバッファを使用するかどうか。今回はしない。
+    depthStencil.front = {};                          // ステンシルバッファに関する設定。今回は無関係。
+    depthStencil.back = {};                           // ステンシルバッファに関する設定。今回は無関係。
+
     // シェーダーにグローバルな変数を渡し、動的に挙動を変更する
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -906,7 +918,7 @@ void HelloTriangleApplication::createGraphicsPipeline()
     pipelineInfo.pViewportState = &viewportState;
     pipelineInfo.pRasterizationState = &rasterizer;
     pipelineInfo.pMultisampleState = &multisampling;
-    pipelineInfo.pDepthStencilState = nullptr;
+    pipelineInfo.pDepthStencilState = &depthStencil;
     pipelineInfo.pColorBlendState = &colorBlending;
     pipelineInfo.pDynamicState = &dynamicState;
     pipelineInfo.layout = pipelineLayout;
