@@ -54,7 +54,7 @@ struct SwapChainSupportDetails
 
 struct Vertex
 {
-    glm::vec2 pos;
+    glm::vec3 pos;
     glm::vec3 color;
     glm::vec2 texCoord;
 
@@ -76,10 +76,10 @@ struct Vertex
         std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
 
         // 頂点座標のバインディングの設定
-        attributeDescriptions[0].binding = 0;                      // どのインデックスのバインディングと紐づくか
-        attributeDescriptions[0].location = 0;                     // vertexシェーダの何番目のinputと紐づくか
-        attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT; // データのフォーマット、32ビットのfloatデータが2つ
-        attributeDescriptions[0].offset = offsetof(Vertex, pos);   // 構造体の先頭アドレスから頂点座標が入っているアドレスのオフセット
+        attributeDescriptions[0].binding = 0;                         // どのインデックスのバインディングと紐づくか
+        attributeDescriptions[0].location = 0;                        // vertexシェーダの何番目のinputと紐づくか
+        attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT; // データのフォーマット、32ビットのfloatデータが3つ
+        attributeDescriptions[0].offset = offsetof(Vertex, pos);      // 構造体の先頭アドレスから頂点座標が入っているアドレスのオフセット
 
         // 頂点色のバインディングの設定
         attributeDescriptions[1].binding = 0;
@@ -119,10 +119,10 @@ private:
     const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME}; // 物理GPUが対応していてほしい拡張機能の名称のリスト
 
     const std::vector<Vertex> vertices = {
-        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-        {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-        {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}};
+        {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+        {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+        {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+        {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}};
 
     const std::vector<uint16_t> indices = {
         0, 1, 2, 2, 3, 0};
