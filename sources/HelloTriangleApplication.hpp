@@ -4,14 +4,15 @@
 #include <vector>
 #include <array>
 #include <cstring>
-#include <iostream>  // デバッグメッセージを表示するのに使用
-#include <optional>  // QueueFamilyIndicesの値が未定義であるかどうかをチェック出来るようにするために必要
-#include <set>       // 今回のアプリケーションで使用するキューのIDの集合を取り扱うために必要
-#include <cstdint>   // uint32_tを使用するために必要
-#include <limits>    // numeric_limitsを使用するために必要
-#include <algorithm> // clampを使用するために必要
-#include <fstream>   // シェーダーコードを読み込むために必要
-#include <chrono>    // 時間に関する処理を扱うために必要
+#include <iostream>      // デバッグメッセージを表示するのに使用
+#include <optional>      // QueueFamilyIndicesの値が未定義であるかどうかをチェック出来るようにするために必要
+#include <set>           // 今回のアプリケーションで使用するキューのIDの集合を取り扱うために必要
+#include <cstdint>       // uint32_tを使用するために必要
+#include <limits>        // numeric_limitsを使用するために必要
+#include <algorithm>     // clampを使用するために必要
+#include <fstream>       // シェーダーコードを読み込むために必要
+#include <chrono>        // 時間に関する処理を扱うために必要
+#include <unordered_map> // 一度読み込んだ頂点情報のインデックスを記憶しておくのに使用する
 
 // ----------GLFW(Vulkan込み)のinclude-----------
 #define VK_USE_PLATFORM_WIN32_KHR // win32のAPIを使用してウインドウにアクセスするために必要
@@ -23,8 +24,10 @@
 // ----------GLMのinclude----------
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE // GLMのデフォルトでは深度は-1.0~1.0で扱われるが、Vulkanでは0.0~1.0なので変更する
+#define GLM_ENABLE_EXPERIMENTAL     // GLMのオブジェクトのハッシュを使用するために必要
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/hash.hpp>
 
 // ----------Win32APIのinclude----------------
 #include "windows.h"
@@ -99,7 +102,26 @@ struct Vertex
 
         return attributeDescriptions;
     }
+
+    bool operator==(const Vertex &other) const
+    {
+        return pos == other.pos && color == other.color && texCoord == other.texCoord;
+    }
 };
+
+namespace std
+{
+    // Vertexをunordered_mapで使用するためにはハッシュ関数を定義しておく必要がある。
+    template <>
+    struct hash<Vertex>
+    {
+        size_t operator()(Vertex const &vertex) const
+        {
+            return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
+                   (hash<glm::vec2>()(vertex.texCoord) << 1);
+        }
+    };
+}
 
 struct UniformBufferObject
 {
@@ -155,12 +177,13 @@ private:
     VkCommandPool commandPool;                   // レンダリングなどのVulkanへのコマンドをキューに流し込むオブジェクト
     std::vector<VkCommandBuffer> commandBuffers; // コマンドプールの記憶実体(?)
 
-    std::vector<Vertex> vertices;      // objファイルから読み込んだ頂点情報が格納される配列
-    std::vector<uint32_t> indices;     // objファイルから読み込んだ頂点のインデックス情報が格納される配列
-    VkBuffer vertexBuffer;             // 頂点データを格納するバッファ
-    VkDeviceMemory vertexBufferMemory; // 頂点データを格納するバッファのメモリ実体
-    VkBuffer indexBuffer;              // 各ポリゴンがどの頂点を使用するかをまとめたデータのためのバッファ
-    VkDeviceMemory indexBufferMemory;  // インデックスバッファのメモリ実体
+    std::vector<Vertex> vertices;                          // objファイルから読み込んだ頂点情報が格納される配列
+    std::vector<uint32_t> indices;                         // objファイルから読み込んだ頂点のインデックス情報が格納される配列
+    VkBuffer vertexBuffer;                                 // 頂点データを格納するバッファ
+    VkDeviceMemory vertexBufferMemory;                     // 頂点データを格納するバッファのメモリ実体
+    VkBuffer indexBuffer;                                  // 各ポリゴンがどの頂点を使用するかをまとめたデータのためのバッファ
+    VkDeviceMemory indexBufferMemory;                      // インデックスバッファのメモリ実体
+    std::unordered_map<Vertex, uint32_t> uniqueVertices{}; // 一度読み込んだ頂点の座標をキーとしてインデックスを保持しておき、同一の頂点を何度も頂点バッファに格納するのを防ぐ
 
     std::vector<VkBuffer> uniformBuffers;             // MVP行列を書き込むためのバッファ。フレーム数分用意するので配列にしている
     std::vector<VkDeviceMemory> uniformBuffersMemory; // uniformBuffersが使用するメモリ実体

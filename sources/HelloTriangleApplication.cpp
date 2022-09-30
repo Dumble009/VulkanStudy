@@ -1341,8 +1341,15 @@ void HelloTriangleApplication::loadModel()
 
             vertex.color = {1.0f, 1.0f, 1.0};
 
-            vertices.push_back(vertex);
-            indices.push_back(indices.size()); // 感嘆のために全ての頂点にユニークなインデックスを振る
+            // 頂点vertexと一致する頂点がuniqueVerticesに含まれているかチェックする
+            if (uniqueVertices.count(vertex) == 0)
+            {
+                // 含まれていなかった場合は、vertexをキーとして新たなインデックスを加える
+                uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+                vertices.push_back(vertex); // 今まで存在していなかった頂点のみを頂点バッファに加える
+            }
+
+            indices.push_back(uniqueVertices[vertex]); // uniqueVerticesに含まれているvertexと一致する頂点のインデックスを格納する。
         }
     }
 }
