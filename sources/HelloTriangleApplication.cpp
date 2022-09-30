@@ -54,6 +54,7 @@ void HelloTriangleApplication::initVulkan()
     createTextureImage();
     createTextureImageView();
     createTextureSampler();
+    loadModel();
     createVertexBuffer();
     createIndexBuffer();
     createUnifomBuffers();
@@ -1305,6 +1306,44 @@ void HelloTriangleApplication::createTextureSampler()
     if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to create texture sampler!");
+    }
+}
+
+void HelloTriangleApplication::loadModel()
+{
+    tinyobj::attrib_t attrib;             // 頂点の座標、法線、UV情報を全て持っているコンテナ
+    std::vector<tinyobj::shape_t> shapes; // 一つのファイルに含まれるモデルの配列。モデルを構成する各面の頂点数は任意だが、tinyobjが自動的に全て三角形に変換してくれる
+    std::vector<tinyobj::material_t> materials;
+    std::string err;
+
+    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, MODEL_PATH.c_str()))
+    {
+        throw std::runtime_error(err);
+    }
+
+    // 全ての配列を一つの頂点配列としてまとめて扱う
+    for (const auto &shape : shapes)
+    {
+        for (const auto &index : shape.mesh.indices)
+        {
+            Vertex vertex{};
+
+            vertex.pos = {
+                attrib.vertices[3 * index.vertex_index + 0],
+                attrib.vertices[3 * index.vertex_index + 1],
+                attrib.vertices[3 * index.vertex_index + 2],
+            };
+
+            vertex.texCoord = {
+                attrib.texcoords[2 * index.texcoord_index + 0],
+                attrib.texcoords[2 * index.texcoord_index + 1],
+            };
+
+            vertex.color = {1.0f, 1.0f, 1.0};
+
+            vertices.push_back(vertex);
+            indices.push_back(indices.size()); // 感嘆のために全ての頂点にユニークなインデックスを振る
+        }
     }
 }
 

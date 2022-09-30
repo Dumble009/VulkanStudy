@@ -250,6 +250,7 @@ private:
                                VkImageLayout newLayout); // VkImageのレイアウトを変更する
     void createTextureImageView();                       // モデルに貼り付けるテクスチャのビューを作成する。
     void createTextureSampler();                         // テクスチャのサンプラー(テクセルのサンプル方法を定義するオブジェクト)を作成する
+    void loadModel();                                    // Objファイルからデータをロードする。
     void createVertexBuffer();                           // 頂点データを保存しておくためのバッファを作成し、CPUからGPUにデータを転送する
     void createIndexBuffer();                            // インデックスバッファを作成し、CPUからGPUにデータを転送する
     void copyBufferToImage(VkBuffer buffer,
