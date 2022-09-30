@@ -1659,7 +1659,7 @@ void HelloTriangleApplication::recordCommandBuffer(VkCommandBuffer commandBuffer
     // 0番目から1つのバインド情報でvertexBuffersをバインドする
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
     // currentFrame番目のデスクリプタセットをシェーダのデスクリプタに割り当てる
     vkCmdBindDescriptorSets(commandBuffer,
