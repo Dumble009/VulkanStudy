@@ -1336,7 +1336,7 @@ void HelloTriangleApplication::loadModel()
 
             vertex.texCoord = {
                 attrib.texcoords[2 * index.texcoord_index + 0],
-                attrib.texcoords[2 * index.texcoord_index + 1],
+                1.0f - attrib.texcoords[2 * index.texcoord_index + 1], // Objファイルは画像下をVの0と扱っているが、Vulkanでは画像上をVの0としているため、上下を反転してやる必要がある。
             };
 
             vertex.color = {1.0f, 1.0f, 1.0};
