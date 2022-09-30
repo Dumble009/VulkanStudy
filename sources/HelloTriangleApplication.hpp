@@ -32,6 +32,9 @@
 // ----------STB(画像ライブラリ)のinclude---------------
 #include "stb_image.h"
 
+// -----------tinyobjloader(Objファイルのライブラリ)のinclude------------
+#include "tiny_obj_loader.h"
+
 // 各コマンドに対応するキューのIDをまとめて保持する構造体
 struct QueueFamilyIndices
 {
