@@ -270,6 +270,10 @@ private:
                      VkMemoryPropertyFlags properties,
                      VkImage &image,
                      VkDeviceMemory &imageMemory); // VkImageを作成する処理をまとめたユーティリティ関数
+    void generateMipmaps(VkImage image,
+                         int32_t texWindth,
+                         int32_t texHeight,
+                         uint32_t mipLevels); // ミップマップの生成
     void transitionImageLayout(VkImage image,
                                VkFormat format,
                                VkImageLayout oldLayout,
