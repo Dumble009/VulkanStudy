@@ -614,11 +614,11 @@ void HelloTriangleApplication::createImageViews()
 
     for (uint32_t i = 0; i < swapChainImages.size(); i++)
     {
-        swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+        swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels);
     }
 }
 
-VkImageView HelloTriangleApplication::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
+VkImageView HelloTriangleApplication::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels)
 {
     VkImageViewCreateInfo viewInfo{};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -629,7 +629,7 @@ VkImageView HelloTriangleApplication::createImageView(VkImage image, VkFormat fo
     viewInfo.subresourceRange.baseMipLevel = 0;
     viewInfo.subresourceRange.levelCount = 1;
     viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount = 1;
+    viewInfo.subresourceRange.layerCount = mipLevels;
 
     VkImageView imageView;
 
@@ -1032,6 +1032,7 @@ void HelloTriangleApplication::createDepthResources()
     VkFormat depthFormat = findDepthFormat();
     createImage(swapChainExtent.width,
                 swapChainExtent.height,
+                mipLevels,
                 depthFormat,
                 VK_IMAGE_TILING_OPTIMAL,
                 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
@@ -1039,12 +1040,13 @@ void HelloTriangleApplication::createDepthResources()
                 depthImage,
                 depthImageMemory);
 
-    depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+    depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 
     transitionImageLayout(depthImage,
                           depthFormat,
                           VK_IMAGE_LAYOUT_UNDEFINED,
-                          VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+                          VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                          1);
 }
 
 VkFormat HelloTriangleApplication::findDepthFormat()
@@ -1090,6 +1092,9 @@ void HelloTriangleApplication::createTextureImage()
     stbi_uc *pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
     VkDeviceSize imageSize = texWidth * texHeight * 4; // RGBAが1バイトずつ並ぶ
 
+    // ミップマップをいくつ作成するかの計算。長辺を2で何回割れるかに元の画像の分で1を足す事で求められる。
+    mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
+
     if (!pixels)
     {
         throw std::runtime_error("failed to load texture image!");
@@ -1115,6 +1120,7 @@ void HelloTriangleApplication::createTextureImage()
     // 最終的な伝送先となるImageを作成する
     createImage(texWidth,
                 texHeight,
+                mipLevels,
                 VK_FORMAT_R8G8B8A8_SRGB,
                 VK_IMAGE_TILING_OPTIMAL,
                 VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
@@ -1126,14 +1132,16 @@ void HelloTriangleApplication::createTextureImage()
     transitionImageLayout(textureImage,
                           VK_FORMAT_R8G8B8A8_SRGB,
                           VK_IMAGE_LAYOUT_UNDEFINED,
-                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                          mipLevels);
 
     copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
 
     transitionImageLayout(textureImage,
                           VK_FORMAT_R8G8B8A8_SRGB,
                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                          mipLevels);
 
     // 転送用のステージングバッファはもう不要なので消してしまう。
     vkDestroyBuffer(device, stagingBuffer, nullptr);
@@ -1142,11 +1150,12 @@ void HelloTriangleApplication::createTextureImage()
 
 void HelloTriangleApplication::createTextureImageView()
 {
-    textureImageView = createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+    textureImageView = createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels);
 }
 
 void HelloTriangleApplication::createImage(uint32_t width,
                                            uint32_t height,
+                                           uint32_t mipLevels,
                                            VkFormat format,
                                            VkImageTiling tiling,
                                            VkImageUsageFlags usage,
@@ -1161,7 +1170,7 @@ void HelloTriangleApplication::createImage(uint32_t width,
     imageInfo.extent.width = width;
     imageInfo.extent.height = height;
     imageInfo.extent.depth = 1; // 3次元テクスチャにおける3次元方向のサイズ。今回は平面のテクスチャなので厚みは1
-    imageInfo.mipLevels = 1;
+    imageInfo.mipLevels = mipLevels;
     imageInfo.arrayLayers = 1;
     imageInfo.format = format;                           // STBで読み込んだ画像はRGBAになっているので、それと合わせた形式にしておく必要がある
     imageInfo.tiling = tiling;                           // テクセルの配置を最適な形で再配置するか。再配置するとピクセル単位でのアクセスする事は出来なくなるが、今回はその必要が無いので再配置をしてもらう
@@ -1195,7 +1204,8 @@ void HelloTriangleApplication::createImage(uint32_t width,
 void HelloTriangleApplication::transitionImageLayout(VkImage image,
                                                      VkFormat format,
                                                      VkImageLayout oldLayout,
-                                                     VkImageLayout newLayout)
+                                                     VkImageLayout newLayout,
+                                                     uint32_t mipLevels)
 {
     VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
@@ -1212,7 +1222,7 @@ void HelloTriangleApplication::transitionImageLayout(VkImage image,
     barrier.subresourceRange.baseMipLevel = 0;
     barrier.subresourceRange.levelCount = 1;
     barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount = 1;
+    barrier.subresourceRange.layerCount = mipLevels;
 
     if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
     {

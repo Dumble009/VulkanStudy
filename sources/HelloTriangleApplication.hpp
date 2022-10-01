@@ -192,6 +192,7 @@ private:
     std::vector<VkSemaphore> renderFinishedSemaphores; // スワップチェインへの書き込みが完了するのを待つためのセマフォ
     std::vector<VkFence> inFlightFences;               // あるフレームへのレンダリングが終わるのを待つためのフェンス
 
+    uint32_t mipLevels;                // いくつのミップマップを作成するか
     VkImage textureImage;              // モデルに貼り付けるテクスチャ画像
     VkDeviceMemory textureImageMemory; // テクスチャ画像が格納されるメモリ実体
     VkImageView textureImageView;      // テクスチャのビュー
@@ -244,14 +245,15 @@ private:
     void createImageViews();  // スワップチェイン内の各画像にアクセスするためのビューを作成する
     VkImageView createImageView(VkImage image,
                                 VkFormat format,
-                                VkImageAspectFlags aspectFlags); // 画像のビューを作成する処理をまとめたヘルパー関数
-    void createRenderPass();                                     // フレームバッファーに含まれるバッファの種類や数などを定める
-    void createDescriptorSetLayout();                            // シェーダに頂点情報以外の情報を伝えるためのデスクリプタを作成する
-    void createGraphicsPipeline();                               // グラフィックパイプラインを作成する
-    void createFramebuffers();                                   // フレームバッファを作成する
-    void createCommandPool();                                    // コマンドプールを作成する
-    void createDepthResources();                                 // 深度バッファを作成する
-    VkFormat findDepthFormat();                                  // 最も適した深度バッファのフォーマットを調べて返す
+                                VkImageAspectFlags aspectFlags,
+                                uint32_t mipLevels); // 画像のビューを作成する処理をまとめたヘルパー関数
+    void createRenderPass();                         // フレームバッファーに含まれるバッファの種類や数などを定める
+    void createDescriptorSetLayout();                // シェーダに頂点情報以外の情報を伝えるためのデスクリプタを作成する
+    void createGraphicsPipeline();                   // グラフィックパイプラインを作成する
+    void createFramebuffers();                       // フレームバッファを作成する
+    void createCommandPool();                        // コマンドプールを作成する
+    void createDepthResources();                     // 深度バッファを作成する
+    VkFormat findDepthFormat();                      // 最も適した深度バッファのフォーマットを調べて返す
     VkFormat findSupportedFormat(const std::vector<VkFormat> &candidates,
                                  VkImageTiling tiling,
                                  VkFormatFeatureFlags features); // candidatesのフォーマットの中からtilingのタイリングパターンでfeaturesの機能を提供できるフォーマットを返す
@@ -261,6 +263,7 @@ private:
     void createTextureImage();                                   // モデルに貼り付けるテクスチャ画像を読み込む
     void createImage(uint32_t width,
                      uint32_t height,
+                     uint32_t mipLevels,
                      VkFormat format,
                      VkImageTiling tiling,
                      VkImageUsageFlags usage,
@@ -270,12 +273,13 @@ private:
     void transitionImageLayout(VkImage image,
                                VkFormat format,
                                VkImageLayout oldLayout,
-                               VkImageLayout newLayout); // VkImageのレイアウトを変更する
-    void createTextureImageView();                       // モデルに貼り付けるテクスチャのビューを作成する。
-    void createTextureSampler();                         // テクスチャのサンプラー(テクセルのサンプル方法を定義するオブジェクト)を作成する
-    void loadModel();                                    // Objファイルからデータをロードする。
-    void createVertexBuffer();                           // 頂点データを保存しておくためのバッファを作成し、CPUからGPUにデータを転送する
-    void createIndexBuffer();                            // インデックスバッファを作成し、CPUからGPUにデータを転送する
+                               VkImageLayout newLayout,
+                               uint32_t mipLevels); // VkImageのレイアウトを変更する
+    void createTextureImageView();                  // モデルに貼り付けるテクスチャのビューを作成する。
+    void createTextureSampler();                    // テクスチャのサンプラー(テクセルのサンプル方法を定義するオブジェクト)を作成する
+    void loadModel();                               // Objファイルからデータをロードする。
+    void createVertexBuffer();                      // 頂点データを保存しておくためのバッファを作成し、CPUからGPUにデータを転送する
+    void createIndexBuffer();                       // インデックスバッファを作成し、CPUからGPUにデータを転送する
     void copyBufferToImage(VkBuffer buffer,
                            VkImage image,
                            uint32_t width,
