@@ -271,6 +271,7 @@ private:
                      VkImage &image,
                      VkDeviceMemory &imageMemory); // VkImageを作成する処理をまとめたユーティリティ関数
     void generateMipmaps(VkImage image,
+                         VkFormat imageFormat,
                          int32_t texWindth,
                          int32_t texHeight,
                          uint32_t mipLevels); // ミップマップの生成

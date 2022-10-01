@@ -1137,7 +1137,7 @@ void HelloTriangleApplication::createTextureImage()
 
     copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
 
-    generateMipmaps(textureImage, texWidth, texHeight, mipLevels);
+    generateMipmaps(textureImage, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, mipLevels);
 
     // 転送用のステージングバッファはもう不要なので消してしまう。
     vkDestroyBuffer(device, stagingBuffer, nullptr);
@@ -1198,10 +1198,19 @@ void HelloTriangleApplication::createImage(uint32_t width,
 }
 
 void HelloTriangleApplication::generateMipmaps(VkImage image,
+                                               VkFormat imageFormat,
                                                int32_t texWidth,
                                                int32_t texHeight,
                                                uint32_t mipLevels)
 {
+    // Blitするためには、ハードウェアでBlit対象の画像フォーマットのリニアフィルタを扱える必要がある。
+    VkFormatProperties formatProperties;
+    vkGetPhysicalDeviceFormatProperties(physicalDevice, imageFormat, &formatProperties);
+    if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
+    {
+        throw std::runtime_error("texture image format does not support linear blitting");
+    }
+
     VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
     VkImageMemoryBarrier barrier{};
