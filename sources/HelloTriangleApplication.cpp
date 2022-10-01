@@ -614,7 +614,7 @@ void HelloTriangleApplication::createImageViews()
 
     for (uint32_t i = 0; i < swapChainImages.size(); i++)
     {
-        swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels);
+        swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
     }
 }
 
@@ -627,9 +627,9 @@ VkImageView HelloTriangleApplication::createImageView(VkImage image, VkFormat fo
     viewInfo.format = format;
     viewInfo.subresourceRange.aspectMask = aspectFlags;
     viewInfo.subresourceRange.baseMipLevel = 0;
-    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.levelCount = mipLevels;
     viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount = mipLevels;
+    viewInfo.subresourceRange.layerCount = 1;
 
     VkImageView imageView;
 
@@ -1032,7 +1032,7 @@ void HelloTriangleApplication::createDepthResources()
     VkFormat depthFormat = findDepthFormat();
     createImage(swapChainExtent.width,
                 swapChainExtent.height,
-                mipLevels,
+                1,
                 depthFormat,
                 VK_IMAGE_TILING_OPTIMAL,
                 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
@@ -1137,11 +1137,11 @@ void HelloTriangleApplication::createTextureImage()
 
     copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
 
-    generateMipmaps(textureImage, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, mipLevels);
-
     // 転送用のステージングバッファはもう不要なので消してしまう。
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
+
+    generateMipmaps(textureImage, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, mipLevels);
 }
 
 void HelloTriangleApplication::createTextureImageView()
@@ -1321,9 +1321,9 @@ void HelloTriangleApplication::transitionImageLayout(VkImage image,
     barrier.image = image;
     // imageのどの範囲のレイアウトを変更するかをsubresourceRangeで指定する。ここでは画像全域を指定している。
     barrier.subresourceRange.baseMipLevel = 0;
-    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.levelCount = mipLevels;
     barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount = mipLevels;
+    barrier.subresourceRange.layerCount = 1;
 
     if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
     {
@@ -1408,11 +1408,11 @@ void HelloTriangleApplication::createTextureSampler()
     // シャドウマップ等を作成するのに使う処理。ここでは何も使用しない
     samplerInfo.compareEnable = VK_FALSE;
     samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-    // みっぷマップ関連の処理
+    // ミップマップ関連の処理
     samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
     samplerInfo.mipLodBias = 0.0f;
     samplerInfo.minLod = 0.0f;
-    samplerInfo.maxLod = 0.0f;
+    samplerInfo.maxLod = static_cast<float>(mipLevels); // カメラから遠ざかっていった時にミップマップを何段階に分けるか
 
     if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS)
     {
