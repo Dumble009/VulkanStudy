@@ -650,7 +650,6 @@ void HelloTriangleApplication::createRenderPass()
     // 色を取り扱うサブパスに渡されるテクスチャの情報を定義する。このテクスチャはMSAA用の物で最終的に画面に表示されるテクスチャではない
     VkAttachmentDescription colorAttachment{};
     colorAttachment.format = swapChainImageFormat;
-    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
     colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;                   // フレームバッファに書き込む前に既存の内容をクリアする
     colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;                 // フレームバッファに書き込まれた値を保持し、後でウインドウに表示したりする際に読みだされるようにする
     colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;        // ステンシルの値はクリアされてもされなくてもどっちでもいい
@@ -667,7 +666,6 @@ void HelloTriangleApplication::createRenderPass()
     // 深度バッファに使用するテクスチャの情報を定義する
     VkAttachmentDescription depthAttachment{};
     depthAttachment.format = findDepthFormat();
-    depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
     depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; // 描画が完了したら深度バッファは使用しないので、レンダリング後はどういう形式になっても気にしない
     depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -1211,14 +1209,13 @@ void HelloTriangleApplication::createImage(uint32_t width,
     imageInfo.extent.height = height;
     imageInfo.extent.depth = 1; // 3次元テクスチャにおける3次元方向のサイズ。今回は平面のテクスチャなので厚みは1
     imageInfo.mipLevels = mipLevels;
-    imageInfo.samples = numSamples;
     imageInfo.arrayLayers = 1;
     imageInfo.format = format;                           // STBで読み込んだ画像はRGBAになっているので、それと合わせた形式にしておく必要がある
     imageInfo.tiling = tiling;                           // テクセルの配置を最適な形で再配置するか。再配置するとピクセル単位でのアクセスする事は出来なくなるが、今回はその必要が無いので再配置をしてもらう
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; // このImageにテクセル情報が書き込まれる段階で書き込まれたテクセル情報の並びをそのまま維持し続けるかどうか。今回はその必要が無いので、自由にしてもらう
     imageInfo.usage = usage;                             // このImageは転送される側であり、シェーダから色をサンプルできるようにしてほしい
     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;   // グラフィックスコマンドを扱うキューのみからアクセスできれば良い
-    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;           // マルチサンプリングに関する設定。アタッチメントに使用するImageのみに関連する設定項目。ここではマルチサンプリングはしないように設定する
+    imageInfo.samples = numSamples;                      // マルチサンプリングに関する設定。アタッチメントに使用するImageのみに関連する設定項目。ここではマルチサンプリングはしないように設定する
     imageInfo.flags = 0;
 
     if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS)
