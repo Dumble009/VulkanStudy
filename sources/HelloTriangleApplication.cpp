@@ -370,6 +370,7 @@ void HelloTriangleApplication::createLogicalDevice()
 
     VkPhysicalDeviceFeatures deviceFeatures{};  // キューに要求する機能。今は空にしておく
     deviceFeatures.samplerAnisotropy = VK_TRUE; // 異方性フィルタリングが出来る事
+    deviceFeatures.sampleRateShading = VK_TRUE; // テクスチャに対するマルチサンプリングを有効化する
 
     // ここから論理デバイスの作成情報を埋めていく
     VkDeviceCreateInfo createInfo{};
@@ -606,7 +607,6 @@ void HelloTriangleApplication::recreateSwapChain()
 
     createSwapChain();
     createImageViews();
-    createGraphicsPipeline();
     createColorResources();
     createDepthResources();
     createFramebuffers();
@@ -866,9 +866,9 @@ void HelloTriangleApplication::createGraphicsPipeline()
     // AAのマルチサンプリングの設定
     VkPipelineMultisampleStateCreateInfo multisampling{};
     multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    multisampling.sampleShadingEnable = VK_FALSE;
+    multisampling.sampleShadingEnable = VK_TRUE;
     multisampling.rasterizationSamples = msaaSamples;
-    multisampling.minSampleShading = 1.0f;
+    multisampling.minSampleShading = 0.2f;
     multisampling.pSampleMask = nullptr;
     multisampling.alphaToCoverageEnable = VK_FALSE;
     multisampling.alphaToOneEnable = VK_FALSE;
@@ -2226,6 +2226,7 @@ void HelloTriangleApplication::cleanupSwapChain()
     vkDestroyImageView(device, colorImageView, nullptr);
     vkDestroyImage(device, colorImage, nullptr);
     vkFreeMemory(device, colorImageMemory, nullptr);
+
     vkDestroyImageView(device, depthImageView, nullptr);
     vkDestroyImage(device, depthImage, nullptr);
     vkFreeMemory(device, depthImageMemory, nullptr);
