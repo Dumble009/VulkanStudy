@@ -334,6 +334,7 @@ void HelloTriangleApplication::pickPhysicalDevice()
         if (isDeviceSuitable(device))
         {
             physicalDevice = device;
+            msaaSamples = getMaxUsableSampleCount(); // MSAA用のサンプル点の数を決定する
             break;
         }
     }
@@ -1925,6 +1926,36 @@ VkExtent2D HelloTriangleApplication::chooseSwapExtent(const VkSurfaceCapabilitie
 
         return actualExtent;
     }
+}
+
+VkSampleCountFlagBits HelloTriangleApplication::getMaxUsableSampleCount()
+{
+    VkPhysicalDeviceProperties physicalDeviceProperties;
+    vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
+
+    // カラーバッファと深度バッファの両方でサポートしているサンプリング数を計算する
+    VkSampleCountFlags counts =
+        physicalDeviceProperties.limits.framebufferColorSampleCounts & physicalDeviceProperties.limits.framebufferDepthSampleCounts;
+
+    // 64点から2点まで全パターンを点が多い物から順に調べていき、カラーと深度の両方でサポートされているものが見つかったらそれを返す
+    // つまり、ここでは使用可能な形式の中で最も点の数が多いものを優先的に探すようにしている。
+    std::array<VkSampleCountFlagBits, 6> flags = {
+        VK_SAMPLE_COUNT_64_BIT,
+        VK_SAMPLE_COUNT_32_BIT,
+        VK_SAMPLE_COUNT_16_BIT,
+        VK_SAMPLE_COUNT_8_BIT,
+        VK_SAMPLE_COUNT_4_BIT,
+        VK_SAMPLE_COUNT_2_BIT};
+
+    for (auto f : flags)
+    {
+        if (counts & f)
+        {
+            return f;
+        }
+    }
+
+    return VK_SAMPLE_COUNT_1_BIT;
 }
 
 void HelloTriangleApplication::calcMonitorOffset()

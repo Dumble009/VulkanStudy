@@ -206,6 +206,8 @@ private:
 
     uint32_t currentFrame = 0; // 今使用しているフレームバッファのインデックス
 
+    VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT; // MSAAを行うために何点のサンプリングポイントを使用するか
+
     int monitorLeftOffset = 0; // 全モニタの左上の座標を(0, 0)にするためのオフセット
     int monitorTopOffset = 0;  // 全モニタの左上の座標を(0, 0)にするためのオフセット
 
@@ -310,6 +312,8 @@ private:
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats); // スワップチェインが対応している画像フォーマットの中から最適なものを選んで返す
     VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);  // スワップチェインへの画像の渡し方の中で最適な物を選んで返す
     VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);                           // スワップチェインへ渡す画像の解像度を決定して返す
+
+    VkSampleCountFlagBits getMaxUsableSampleCount(); // ハードウェアがサポートするサンプルカウントの最大数を調べて返す
 
     void calcMonitorOffset(); // 全モニタが構成する矩形領域の左上の座標を計算する
 
