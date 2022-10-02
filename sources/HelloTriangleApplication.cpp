@@ -606,6 +606,8 @@ void HelloTriangleApplication::recreateSwapChain()
 
     createSwapChain();
     createImageViews();
+    createGraphicsPipeline();
+    createColorResources();
     createDepthResources();
     createFramebuffers();
 }
@@ -1052,7 +1054,7 @@ void HelloTriangleApplication::createDepthResources()
     createImage(swapChainExtent.width,
                 swapChainExtent.height,
                 1,
-                VK_SAMPLE_COUNT_1_BIT,
+                msaaSamples,
                 depthFormat,
                 VK_IMAGE_TILING_OPTIMAL,
                 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
@@ -2204,6 +2206,9 @@ void HelloTriangleApplication::cleanup()
 
 void HelloTriangleApplication::cleanupSwapChain()
 {
+    vkDestroyImageView(device, colorImageView, nullptr);
+    vkDestroyImage(device, colorImage, nullptr);
+    vkFreeMemory(deice, colorImageMemory, nullptr);
     vkDestroyImageView(device, depthImageView, nullptr);
     vkDestroyImage(device, depthImage, nullptr);
     vkFreeMemory(device, depthImageMemory, nullptr);
