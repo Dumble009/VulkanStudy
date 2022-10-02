@@ -202,6 +202,11 @@ private:
     VkDeviceMemory depthImageMemory; // 深度バッファが実際に格納されるメモリ実体
     VkImageView depthImageView;      // 深度バッファのビュー
 
+    // マルチサンプリング用のバッファに関連する変数
+    VkImage colorImage;
+    VkDeviceMemory colorImageMemory;
+    VkImageView colorImageView;
+
     bool framebufferResized = false; // ウインドウサイズの変更等があったときにそれを知らせるために立てられるフラグ
 
     uint32_t currentFrame = 0; // 今使用しているフレームバッファのインデックス
@@ -254,6 +259,7 @@ private:
     void createGraphicsPipeline();                   // グラフィックパイプラインを作成する
     void createFramebuffers();                       // フレームバッファを作成する
     void createCommandPool();                        // コマンドプールを作成する
+    void createColorResources();                     // マルチサンプリング可能なカラーバッファを作成する
     void createDepthResources();                     // 深度バッファを作成する
     VkFormat findDepthFormat();                      // 最も適した深度バッファのフォーマットを調べて返す
     VkFormat findSupportedFormat(const std::vector<VkFormat> &candidates,
@@ -266,6 +272,7 @@ private:
     void createImage(uint32_t width,
                      uint32_t height,
                      uint32_t mipLevels,
+                     VkSampleCountFlagBits numSamples,
                      VkFormat format,
                      VkImageTiling tiling,
                      VkImageUsageFlags usage,

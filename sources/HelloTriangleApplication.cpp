@@ -49,6 +49,7 @@ void HelloTriangleApplication::initVulkan()
     createDescriptorSetLayout();
     createGraphicsPipeline();
     createCommandPool();
+    createColorResources();
     createDepthResources();
     createFramebuffers();
     createTextureImage();
@@ -1028,12 +1029,30 @@ void HelloTriangleApplication::endSingleTimeCommands(VkCommandBuffer commandBuff
     vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 }
 
+void HelloTriangleApplication::createColorResources()
+{
+    VkFormat colorFormat = swapChainImageFormat;
+
+    createImage(swapChainExtent.width,
+                swapChainExtent.height,
+                1,
+                msaaSamples,
+                colorFormat,
+                VK_IMAGE_TILING_OPTIMAL,
+                VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                colorImage,
+                colorImageMemory);
+    colorImageView = createImageView(colorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+}
+
 void HelloTriangleApplication::createDepthResources()
 {
     VkFormat depthFormat = findDepthFormat();
     createImage(swapChainExtent.width,
                 swapChainExtent.height,
                 1,
+                VK_SAMPLE_COUNT_1_BIT,
                 depthFormat,
                 VK_IMAGE_TILING_OPTIMAL,
                 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
@@ -1122,6 +1141,7 @@ void HelloTriangleApplication::createTextureImage()
     createImage(texWidth,
                 texHeight,
                 mipLevels,
+                VK_SAMPLE_COUNT_1_BIT,
                 VK_FORMAT_R8G8B8A8_SRGB,
                 VK_IMAGE_TILING_OPTIMAL,
                 VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, // ミップマップを作成する際に書き込む必要があるので、TRAANSFER_SRCも指定する必要がある
@@ -1153,6 +1173,7 @@ void HelloTriangleApplication::createTextureImageView()
 void HelloTriangleApplication::createImage(uint32_t width,
                                            uint32_t height,
                                            uint32_t mipLevels,
+                                           VkSampleCountFlagBits numSamples,
                                            VkFormat format,
                                            VkImageTiling tiling,
                                            VkImageUsageFlags usage,
@@ -1168,6 +1189,7 @@ void HelloTriangleApplication::createImage(uint32_t width,
     imageInfo.extent.height = height;
     imageInfo.extent.depth = 1; // 3次元テクスチャにおける3次元方向のサイズ。今回は平面のテクスチャなので厚みは1
     imageInfo.mipLevels = mipLevels;
+    imageInfo.samples = numSamples;
     imageInfo.arrayLayers = 1;
     imageInfo.format = format;                           // STBで読み込んだ画像はRGBAになっているので、それと合わせた形式にしておく必要がある
     imageInfo.tiling = tiling;                           // テクセルの配置を最適な形で再配置するか。再配置するとピクセル単位でのアクセスする事は出来なくなるが、今回はその必要が無いので再配置をしてもらう
