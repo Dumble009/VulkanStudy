@@ -647,16 +647,17 @@ VkImageView HelloTriangleApplication::createImageView(VkImage image, VkFormat fo
 
 void HelloTriangleApplication::createRenderPass()
 {
-    // 色を取り扱うサブパスに渡されるテクスチャの情報を定義する
+    // 色を取り扱うサブパスに渡されるテクスチャの情報を定義する。このテクスチャはMSAA用の物で最終的に画面に表示されるテクスチャではない
     VkAttachmentDescription colorAttachment{};
     colorAttachment.format = swapChainImageFormat;
     colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;              // フレームバッファに書き込む前に既存の内容をクリアする
-    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;            // フレームバッファに書き込まれた値を保持し、後でウインドウに表示したりする際に読みだされるようにする
-    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;   // ステンシルの値はクリアされてもされなくてもどっちでもいい
-    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; // ステンシルの値は保持されてもされなくてもどっちでもいい
-    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;         // 最初にフレームバッファに書き込まれているデータの構造は気にしない
-    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;     // フレームバッファに書き込んだ後のデータはスワップチェインに表示できる形式にする
+    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;                   // フレームバッファに書き込む前に既存の内容をクリアする
+    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;                 // フレームバッファに書き込まれた値を保持し、後でウインドウに表示したりする際に読みだされるようにする
+    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;        // ステンシルの値はクリアされてもされなくてもどっちでもいい
+    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;      // ステンシルの値は保持されてもされなくてもどっちでもいい
+    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;              // 最初にフレームバッファに書き込まれているデータの構造は気にしない
+    colorAttachment.samples = msaaSamples;                                  // MSAAのサンプル点の数を指定
+    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; // フレームバッファに書き込んだ後のデータはスワップチェインに表示できる形式にする
 
     // サブパスに渡すテクスチャのメタデータ
     VkAttachmentReference colorAttachmentRef{};
@@ -672,19 +673,36 @@ void HelloTriangleApplication::createRenderPass()
     depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    depthAttachment.samples = msaaSamples;
     depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
     VkAttachmentReference depthAttachmentRef{};
     depthAttachmentRef.attachment = 1;
     depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+    // MSAA用のテクスチャの解像度を変更して画面に出力できるようにしたテクスチャの情報を定義する
+    VkAttachmentDescription colorAttachmentResolve{};
+    colorAttachmentResolve.format = swapChainImageFormat;
+    colorAttachmentResolve.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAttachmentResolve.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttachmentResolve.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttachmentResolve.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttachmentResolve.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttachmentResolve.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttachmentResolve.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    VkAttachmentReference colorAttachmentResolveRef{};
+    colorAttachmentResolveRef.attachment = 2;
+    colorAttachmentResolveRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
     VkSubpassDescription subpass{};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS; // このサブパスがレンダリング用のものであることを示す
     subpass.colorAttachmentCount = 1;                            // このサブパスが何枚のカラーテクスチャを持つか
-    subpass.pColorAttachments = &colorAttachmentRef;             // サブパスに渡されてくる各テクスチャのメタデータの配列(ポインタ)
+    subpass.pColorAttachments = &colorAttachmentRef;             // サブパスに渡されてくるMSAA用のカラーテクスチャのメタデータの配列(ポインタ)
     subpass.pDepthStencilAttachment = &depthAttachmentRef;       // サブパスに渡されてくる深度テクスチャのメタデータの配列。深度テクスチャは最大1枚しか使用しないので、colorAttachmentCountに相当するメンバは無い。
+    subpass.pResolveAttachments = &colorAttachmentResolveRef;    // サブパスに渡されてくる画面に出力するテクスチャのメタデータの配列
 
-    std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
+    std::array<VkAttachmentDescription, 3> attachments = {colorAttachment, depthAttachment, colorAttachmentResolve};
     VkRenderPassCreateInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size()); // レンダーパス全体で扱うテクスチャの数
@@ -848,11 +866,10 @@ void HelloTriangleApplication::createGraphicsPipeline()
     rasterizer.depthBiasSlopeFactor = 0.0f;
 
     // AAのマルチサンプリングの設定
-    // ここではAAは使用しないように設定している
     VkPipelineMultisampleStateCreateInfo multisampling{};
     multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisampling.sampleShadingEnable = VK_FALSE;
-    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    multisampling.rasterizationSamples = msaaSamples;
     multisampling.minSampleShading = 1.0f;
     multisampling.pSampleMask = nullptr;
     multisampling.alphaToCoverageEnable = VK_FALSE;
@@ -964,7 +981,10 @@ void HelloTriangleApplication::createFramebuffers()
 
     for (size_t i = 0; i < swapChainImages.size(); i++)
     {
-        std::array<VkImageView, 2> attachments = {swapChainImageViews[i], depthImageView}; // 深度バッファは全てのフレームバッファで使い回す
+        std::array<VkImageView, 3> attachments = {
+            colorImageView,
+            depthImageView,
+            swapChainImageViews[i]}; // 深度バッファは全てのフレームバッファで使い回す
 
         VkFramebufferCreateInfo framebufferInfo{};
         framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -2208,7 +2228,7 @@ void HelloTriangleApplication::cleanupSwapChain()
 {
     vkDestroyImageView(device, colorImageView, nullptr);
     vkDestroyImage(device, colorImage, nullptr);
-    vkFreeMemory(deice, colorImageMemory, nullptr);
+    vkFreeMemory(device, colorImageMemory, nullptr);
     vkDestroyImageView(device, depthImageView, nullptr);
     vkDestroyImage(device, depthImage, nullptr);
     vkFreeMemory(device, depthImageMemory, nullptr);
