@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 // ----------STLのinclude----------
 #include <stdexcept> // 例外を投げるために必要
 #include <vector>

@@ -1,4 +1,4 @@
-#include "HelloTriangleApplication.hpp"
+﻿#include "HelloTriangleApplication.hpp"
 
 HWND handle_workerw;
 HDC dc_workerw;
