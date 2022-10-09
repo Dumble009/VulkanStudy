@@ -13,8 +13,8 @@ file(GLOB_RECURSE SOURCES LIST_DIRECTORIES false RELATIVE "${CMAKE_SOURCE_DIR}" 
 add_executable(VulkanStudy ${SOURCES})
 
 target_include_directories(VulkanStudy PUBLIC "${CMAKE_SOURCE_DIR}/sources" "C:/opengl/glfw-3.3.8.bin.WIN64/include" "C:/opengl/glm" "C:/VulkanSDK/1.3.216.0/Include" "C:/stb-master" "C:/tiny_obj_loader")
-target_link_directories(VulkanStudy PUBLIC "C:/opengl/glfw-3.3.8.bin.WIN64/lib-mingw-w64/" "C:/VulkanSDK/1.3.216.0/Lib")
-target_link_libraries(VulkanStudy glfw3 opengl32 vulkan-1)
+target_link_directories(VulkanStudy PUBLIC "C:/opengl/glfw-3.3.8.bin.WIN64/lib-mingw-w64/" "C:/VulkanSDK/1.3.216.0/Lib" "${CMAKE_SOURCE_DIR}/libraries")
+target_link_libraries(VulkanStudy glfw3 opengl32 vulkan-1 FBXTest)
 
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
