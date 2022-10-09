@@ -13,10 +13,11 @@
 
 // ----------自作クラスのinclude----------
 #include <HelloTriangleApplication.hpp>
+#include "fbxtest.h"
 
 int main(void)
 {
-    HelloTriangleApplication app;
+    /*HelloTriangleApplication app;
 
     try
     {
@@ -31,9 +32,9 @@ int main(void)
     }
 
     std::cout << "success" << std::endl;
-    return EXIT_SUCCESS;
+    return EXIT_SUCCESS;*/
 
-    // helloWorld();
+    helloWorld();
 
     return EXIT_SUCCESS;
 }
