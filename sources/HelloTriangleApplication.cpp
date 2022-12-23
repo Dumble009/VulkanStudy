@@ -1498,14 +1498,14 @@ void HelloTriangleApplication::loadModel()
         Vertex vertex{};
 
         vertex.pos = {
-            vertexPositions->at(index).x,
-            vertexPositions->at(index).y,
-            vertexPositions->at(index).z,
+            vertexPositions->at(index).x / 10.0f,
+            vertexPositions->at(index).y / 10.0f,
+            vertexPositions->at(index).z / 10.0f,
         };
 
         vertex.texCoord = {
             vertexUVs->at(i)[0].x,
-            1.0f - vertexUVs->at(i)[0].y, // fbxファイルは画像下をVの0と扱っているが、Vulkanでは画像上をVの0としているため、上下を反転してやる必要がある。
+            vertexUVs->at(i)[0].y, // fbxファイルは画像下をVの0と扱っているが、Vulkanでは画像上をVの0としているため、上下を反転してやる必要がある。
         };
 
         vertex.color = {1.0f, 1.0f, 1.0f};

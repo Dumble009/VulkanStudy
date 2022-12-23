@@ -143,8 +143,8 @@ private:
     const int DEFAULT_WINDOW_WIDTH = 800;  // ウインドウ幅の初期値
     const int DEFAULT_WINDOW_HEIGHT = 600; // ウインドウ高さの初期値
 
-    const std::string MODEL_PATH = "models/box.obj";
-    const std::string TEXTURE_PATH = "textures/UVChecker.png";
+    const std::string MODEL_PATH = "models/vikingroom.fbx";
+    const std::string TEXTURE_PATH = "textures/viking_room.png";
 
     const int MAX_FRAMES_IN_FLIGHT = 2;
 
