@@ -1464,7 +1464,64 @@ void HelloTriangleApplication::createTextureSampler()
 
 void HelloTriangleApplication::loadModel()
 {
-    tinyobj::attrib_t attrib;             // 頂点の座標、法線、UV情報を全て持っているコンテナ
+    auto agent = fbxAgent::FbxAgent();
+
+    auto ret = agent.Init();
+
+    if (ret != fbxAgent::FbxAgentErrorCode::FBX_AGENT_SUCCESS)
+    {
+        throw std::runtime_error("FbxAgent.Init failed");
+    }
+
+    ret = agent.Load(MODEL_PATH.c_str());
+
+    if (ret != fbxAgent::FbxAgentErrorCode::FBX_AGENT_SUCCESS)
+    {
+        throw std::runtime_error("FbxAgent.Load failed");
+    }
+
+    fbxAgent::Model *model = nullptr;
+    ret = agent.GetModelByIndex(0, &model);
+
+    if (ret != fbxAgent::FbxAgentErrorCode::FBX_AGENT_SUCCESS)
+    {
+        throw std::runtime_error("FbxAgent.GetModelByIndex failed");
+    }
+
+    auto vertexPositions = model->GetVertexPositions();
+    auto vertexIndices = model->GetVertexIndices();
+    auto vertexUVs = model->GetVertexUVs();
+    int indexCount = model->GetVertexIndexCount();
+    for (int i = 0; i < indexCount; i++)
+    {
+        int index = vertexIndices->at(i);
+        Vertex vertex{};
+
+        vertex.pos = {
+            vertexPositions->at(index).x,
+            vertexPositions->at(index).y,
+            vertexPositions->at(index).z,
+        };
+
+        vertex.texCoord = {
+            vertexUVs->at(i)[0].x,
+            1.0f - vertexUVs->at(i)[0].y, // fbxファイルは画像下をVの0と扱っているが、Vulkanでは画像上をVの0としているため、上下を反転してやる必要がある。
+        };
+
+        vertex.color = {1.0f, 1.0f, 1.0f};
+
+        // 頂点vertexと一致する頂点がuniqueVerticesに含まれているかチェックする
+        if (uniqueVertices.count(vertex) == 0)
+        {
+            // 含まれていなかった場合は、vertexをキーとして新たなインデックスを加える
+            uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+            vertices.push_back(vertex); // 今まで存在していなかった頂点のみを頂点バッファに加える
+        }
+
+        indices.push_back(uniqueVertices[vertex]); // uniqueVerticesに含まれているvertexと一致する頂点のインデックスを格納する。
+    }
+
+    /*tinyobj::attrib_t attrib;             // 頂点の座標、法線、UV情報を全て持っているコンテナ
     std::vector<tinyobj::shape_t> shapes; // 一つのファイルに含まれるモデルの配列。モデルを構成する各面の頂点数は任意だが、tinyobjが自動的に全て三角形に変換してくれる
     std::vector<tinyobj::material_t> materials;
     std::string err;
@@ -1504,7 +1561,7 @@ void HelloTriangleApplication::loadModel()
 
             indices.push_back(uniqueVertices[vertex]); // uniqueVerticesに含まれているvertexと一致する頂点のインデックスを格納する。
         }
-    }
+    }*/
 }
 
 void HelloTriangleApplication::createVertexBuffer()

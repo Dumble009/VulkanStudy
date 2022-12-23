@@ -38,6 +38,9 @@
 // -----------tinyobjloader(Objファイルのライブラリ)のinclude------------
 #include "tiny_obj_loader.h"
 
+// -----------FbxAgent(fbxファイルのライブラリ)のinclude----------
+#include "FbxAgent.h"
+
 // 各コマンドに対応するキューのIDをまとめて保持する構造体
 struct QueueFamilyIndices
 {
