@@ -1498,9 +1498,9 @@ void HelloTriangleApplication::loadModel()
         Vertex vertex{};
 
         vertex.pos = {
+            vertexPositions->at(index).z / 10.0f,
             vertexPositions->at(index).x / 10.0f,
             vertexPositions->at(index).y / 10.0f,
-            vertexPositions->at(index).z / 10.0f,
         };
 
         vertex.texCoord = {
